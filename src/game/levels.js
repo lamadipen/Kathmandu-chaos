@@ -10,6 +10,9 @@ export const LEVELS = [
     cows: 3,
     cyclists: 6,
     police: 2,
+    theme: 'market',
+    routeBoard: 'Ratna Park',
+    signs: ['Chiya', 'Momo', 'Asan'],
     palette: {
       sky: 0xbfe7ff,
       fog: 0xd9f0ff,
@@ -28,6 +31,9 @@ export const LEVELS = [
     cows: 4,
     cyclists: 8,
     police: 3,
+    theme: 'stupa',
+    routeBoard: 'Boudha',
+    signs: ['Boudha', 'Thukpa', 'Thanka'],
     palette: {
       sky: 0xcdeedc,
       fog: 0xe5f6e9,
@@ -46,6 +52,9 @@ export const LEVELS = [
     cows: 5,
     cyclists: 10,
     police: 3,
+    theme: 'durbar',
+    routeBoard: 'Patan',
+    signs: ['Patan', 'Crafts', 'Juju Dhau'],
     palette: {
       sky: 0xffe4bf,
       fog: 0xffefd5,
@@ -65,6 +74,9 @@ export const LEVELS = [
     cyclists: 12,
     police: 4,
     wetRoad: true,
+    theme: 'monsoon',
+    routeBoard: 'Ring Road',
+    signs: ['Kalanki', 'Tyre Shop', 'Bus Stop'],
     palette: {
       sky: 0x9eb7c7,
       fog: 0xcad7df,
@@ -84,6 +96,9 @@ export const LEVELS = [
     cyclists: 14,
     police: 5,
     hill: true,
+    theme: 'swayambhu',
+    routeBoard: 'Swayambhu',
+    signs: ['Thamel', 'Swayambhu', 'Lassi'],
     palette: {
       sky: 0xd7d0ff,
       fog: 0xe7e4ff,

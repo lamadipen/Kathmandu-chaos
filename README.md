@@ -34,7 +34,8 @@ Open the local URL Vite prints in your terminal.
 
 - Five playable route levels
 - Data-driven level configuration
-- Three.js 3D city, road, tempo, passengers, obstacles, and finish gates
+- Nepali-themed low-poly tempo, passengers, traffic police, cows, cyclists, street stalls, prayer flags, shop signs, and landmarks
+- Three.js 3D city, road, obstacles, and finish gates
 - Rapier physics world and colliders
 - Passenger pickup scoring
 - Time limit, health/chances, route progress, and retry flow
@@ -49,11 +50,12 @@ src/
   game/
     KathmanduChaos.js     Core game loop, rendering, physics, input, entities
     levels.js             Level data and route tuning
+    visuals.js            Reusable low-poly Nepali-themed mesh factories
 ```
 
 ## Extending Levels
 
-Levels live in `src/game/levels.js`. Add a new object to `LEVELS` with route name, story, length, time limit, passenger goal, obstacle counts, and palette.
+Levels live in `src/game/levels.js`. Add a new object to `LEVELS` with route name, story, length, time limit, passenger goal, obstacle counts, route theme, signs, and palette.
 
 Example:
 
@@ -69,6 +71,9 @@ Example:
   cows: 4,
   cyclists: 9,
   police: 3,
+  theme: 'market',
+  routeBoard: 'New Road',
+  signs: ['New Road', 'Momo', 'Chiya'],
   palette: {
     sky: 0xbfe7ff,
     fog: 0xd9f0ff,

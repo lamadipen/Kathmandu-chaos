@@ -1,6 +1,15 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { LEVELS, LANES } from './levels.js';
+import {
+  createLandmark,
+  createObstacle,
+  createPassenger as createPassengerMesh,
+  createPrayerFlags,
+  createShopSign,
+  createStreetStall,
+  createTempo
+} from './visuals.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const rand = (min, max) => min + Math.random() * (max - min);
@@ -134,6 +143,7 @@ export class KathmanduChaos {
 
     this.addRoadPaint();
     this.addCityBlocks();
+    this.addRouteDressing();
   }
 
   addRoadPaint() {
@@ -149,6 +159,7 @@ export class KathmanduChaos {
 
   addCityBlocks() {
     const colors = [0xbd6b52, 0xd49a63, 0x7aa0a8, 0x6e8064, 0xd6c29b, 0x8b6d9e];
+    const shopLabels = this.level.signs ?? ['Chiya', 'Momo', 'Yatayat'];
     for (let z = -20; z > -this.level.length - 80; z -= 26) {
       for (const side of [-1, 1]) {
         const width = rand(7, 13);
@@ -163,6 +174,13 @@ export class KathmanduChaos {
         building.receiveShadow = true;
         this.scene.add(building);
 
+        if (Math.random() > 0.38) {
+          const sign = createShopSign(choice(shopLabels), this.level.palette.accent);
+          sign.position.set(building.position.x - side * (width / 2 + 0.08), Math.min(height - 0.45, 2.5), building.position.z);
+          sign.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+          this.scene.add(sign);
+        }
+
         if (Math.random() > 0.45) {
           const flag = new THREE.Mesh(
             new THREE.BoxGeometry(width * 0.7, 0.08, 0.9),
@@ -175,42 +193,38 @@ export class KathmanduChaos {
     }
   }
 
+  addRouteDressing() {
+    const stallLabels = this.level.signs ?? ['Momo', 'Chiya'];
+    for (let z = -80; z > -this.level.length; z -= 140) {
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const stall = createStreetStall(choice(stallLabels));
+      stall.position.set(side * rand(11.5, 14.5), 0, z + rand(-20, 20));
+      stall.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      this.scene.add(stall);
+    }
+
+    for (let z = -110; z > -this.level.length; z -= 180) {
+      const flags = createPrayerFlags(rand(5, 8));
+      flags.position.set(0, rand(5.4, 7.2), z);
+      flags.rotation.y = rand(-0.25, 0.25);
+      this.scene.add(flags);
+    }
+
+    const landmarkPositions = [-this.level.length * 0.34, -this.level.length * 0.68];
+    for (const [index, z] of landmarkPositions.entries()) {
+      const side = index % 2 === 0 ? 1 : -1;
+      const landmark = createLandmark(this.level.theme, this.level.palette.accent);
+      landmark.position.set(side * 23, 0, z);
+      landmark.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      landmark.scale.setScalar(index === 0 ? 1 : 0.82);
+      this.scene.add(landmark);
+    }
+  }
+
   buildPlayer() {
-    this.player = new THREE.Group();
+    this.player = createTempo(this.level.routeBoard);
     this.player.position.set(0, 0.9, 12);
     this.scene.add(this.player);
-
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1ba784, roughness: 0.42, metalness: 0.08 });
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0xffcf42, roughness: 0.48 });
-    const blackMat = new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.55 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x8bd3ff, roughness: 0.12, metalness: 0.1 });
-
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.7, 3.2), bodyMat);
-    cabin.position.y = 0.4;
-    cabin.castShadow = true;
-    this.player.add(cabin);
-
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(1.55, 1.25, 1.6), bodyMat);
-    nose.position.set(0, 0.2, -1.85);
-    nose.castShadow = true;
-    this.player.add(nose);
-
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(2.75, 0.28, 3.75), roofMat);
-    roof.position.y = 1.4;
-    roof.castShadow = true;
-    this.player.add(roof);
-
-    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.65, 0.08), glassMat);
-    windshield.position.set(0, 0.75, -2.66);
-    this.player.add(windshield);
-
-    for (const [x, z] of [[-1.25, -1.4], [1.25, -1.4], [0, 1.45]]) {
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.32, 24), blackMat);
-      wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(x, -0.55, z);
-      wheel.castShadow = true;
-      this.player.add(wheel);
-    }
 
     const rb = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0.9, 12);
     this.playerBody = this.world.createRigidBody(rb);
@@ -232,21 +246,14 @@ export class KathmanduChaos {
     for (let i = 0; i < this.level.passengerGoal + 2; i += 1) {
       const lane = choice([LANES[0], LANES[4]]);
       const z = -spacing * (i + 0.75) + rand(-12, 12);
-      const passenger = this.createPassenger(lane, z);
+      const passenger = this.createPassenger(lane, z, i);
       this.pickups.push({ mesh: passenger, collected: false, z, x: lane, value: 120 + i * 15 });
     }
   }
 
-  createPassenger(x, z) {
-    const group = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: choice([0xe8505b, 0x6c63ff, 0x2f9e44, 0xf08c00]), roughness: 0.7 });
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0xb77b4f }));
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.55, 6, 12), mat);
-    head.position.y = 1.05;
-    body.position.y = 0.52;
-    group.add(head, body);
+  createPassenger(x, z, index) {
+    const group = createPassengerMesh(index);
     group.position.set(x, 0, z);
-    group.castShadow = true;
     this.scene.add(group);
     return group;
   }
@@ -269,36 +276,7 @@ export class KathmanduChaos {
   }
 
   createObstacleMesh(type) {
-    const group = new THREE.Group();
-    if (type === 'cow') {
-      const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.75, 2.1), new THREE.MeshStandardMaterial({ color: 0xf2eadf, roughness: 0.9 }));
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.55, 0.75), new THREE.MeshStandardMaterial({ color: 0x6a4a3c, roughness: 0.9 }));
-      body.position.y = 0.2;
-      head.position.set(0, 0.32, -1.3);
-      group.add(body, head);
-    } else if (type === 'cyclist') {
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.2, 1.5), new THREE.MeshStandardMaterial({ color: 0x2b8aef, roughness: 0.55 }));
-      const rider = new THREE.Mesh(new THREE.CapsuleGeometry(0.23, 0.65, 6, 12), new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.62 }));
-      frame.position.y = 0.1;
-      rider.position.y = 0.9;
-      group.add(frame, rider);
-    } else if (type === 'police') {
-      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.9, 6, 16), new THREE.MeshStandardMaterial({ color: 0x2348a7, roughness: 0.5 }));
-      const hat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, 0.5), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }));
-      body.position.y = 0.55;
-      hat.position.y = 1.2;
-      group.add(body, hat);
-    } else {
-      const car = new THREE.Mesh(new THREE.BoxGeometry(2.15, 1.1, 3.2), new THREE.MeshStandardMaterial({ color: choice([0xef476f, 0x118ab2, 0xffc43d, 0x4f5d75]), roughness: 0.48 }));
-      const top = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.65, 1.45), new THREE.MeshStandardMaterial({ color: 0xdbeafe, roughness: 0.2 }));
-      car.castShadow = true;
-      top.position.y = 0.75;
-      group.add(car, top);
-    }
-    group.traverse((child) => {
-      if (child.isMesh) child.castShadow = true;
-    });
-    return group;
+    return createObstacle(type);
   }
 
   addFinishGate() {
