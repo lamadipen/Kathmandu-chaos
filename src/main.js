@@ -15,7 +15,14 @@ const game = new KathmanduChaos({
     passengers: document.querySelector('#passengers'),
     time: document.querySelector('#time'),
     hearts: document.querySelector('#hearts'),
-    progressBar: document.querySelector('#progressBar')
+    progressBar: document.querySelector('#progressBar'),
+    targetGuide: document.querySelector('#targetGuide'),
+    targetArrow: document.querySelector('#targetArrow'),
+    targetLabel: document.querySelector('#targetLabel'),
+    targetDistance: document.querySelector('#targetDistance'),
+    feedback: document.querySelector('#feedback'),
+    screenFlash: document.querySelector('#screenFlash'),
+    speedLines: document.querySelector('#speedLines')
   }
 });
 

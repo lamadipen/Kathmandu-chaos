@@ -14,6 +14,12 @@ import {
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const rand = (min, max) => min + Math.random() * (max - min);
 const choice = (items) => items[Math.floor(Math.random() * items.length)];
+const obstacleNames = {
+  car: 'traffic',
+  cow: 'cow',
+  cyclist: 'cyclist',
+  police: 'traffic police'
+};
 
 export class KathmanduChaos {
   constructor({ canvas, ui }) {
@@ -24,8 +30,12 @@ export class KathmanduChaos {
     this.clock = new THREE.Clock();
     this.entities = [];
     this.pickups = [];
+    this.effects = [];
     this.running = false;
     this.pausedByOverlay = true;
+    this.audio = null;
+    this.feedbackTimer = 0;
+    this.shake = 0;
   }
 
   async boot() {
@@ -34,7 +44,6 @@ export class KathmanduChaos {
     this.setupInput();
     this.resize();
     window.addEventListener('resize', () => this.resize());
-    this.ui.startButton.addEventListener('click', () => this.startFromOverlay());
     this.loadLevel(0);
     this.animate();
   }
@@ -64,10 +73,77 @@ export class KathmanduChaos {
   }
 
   startFromOverlay() {
+    this.ensureAudio();
     this.ui.overlay.classList.add('hidden');
     this.pausedByOverlay = false;
     this.running = true;
     this.clock.getDelta();
+  }
+
+  ensureAudio() {
+    if (this.audio) {
+      this.audio.ctx.resume?.();
+      return;
+    }
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const master = ctx.createGain();
+    master.gain.value = 0.22;
+    master.connect(ctx.destination);
+    this.audio = { ctx, master };
+  }
+
+  playTone(frequency, duration = 0.12, type = 'sine', gain = 0.3, when = 0) {
+    if (!this.audio) return;
+    const { ctx, master } = this.audio;
+    const start = ctx.currentTime + when;
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, start);
+    amp.gain.setValueAtTime(0.0001, start);
+    amp.gain.exponentialRampToValueAtTime(gain, start + 0.015);
+    amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(amp);
+    amp.connect(master);
+    osc.start(start);
+    osc.stop(start + duration + 0.04);
+  }
+
+  playNoise(duration = 0.18, gain = 0.16) {
+    if (!this.audio) return;
+    const { ctx, master } = this.audio;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const amp = ctx.createGain();
+    filter.type = 'lowpass';
+    filter.frequency.value = 260;
+    amp.gain.setValueAtTime(gain, ctx.currentTime);
+    amp.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+    source.buffer = buffer;
+    source.connect(filter);
+    filter.connect(amp);
+    amp.connect(master);
+    source.start();
+  }
+
+  playPickupSound() {
+    this.playTone(660, 0.08, 'triangle', 0.22);
+    this.playTone(990, 0.12, 'triangle', 0.2, 0.08);
+  }
+
+  playHitSound(type) {
+    if (type === 'police') {
+      this.playTone(1400, 0.11, 'square', 0.16);
+      this.playTone(1750, 0.11, 'square', 0.14, 0.12);
+    } else {
+      this.playNoise(0.2, 0.18);
+      this.playTone(110, 0.18, 'sawtooth', 0.12);
+    }
   }
 
   loadLevel(index) {
@@ -82,6 +158,7 @@ export class KathmanduChaos {
       speed: 0,
       steer: 0,
       invulnerable: 0,
+      pickupAssist: 0,
       finished: false
     };
 
@@ -89,6 +166,9 @@ export class KathmanduChaos {
     this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     this.entities = [];
     this.pickups = [];
+    this.effects = [];
+    this.shake = 0;
+    this.feedbackTimer = 0;
 
     this.buildWorld();
     this.buildPlayer();
@@ -299,18 +379,25 @@ export class KathmanduChaos {
 
     this.state.elapsed += delta;
     this.state.invulnerable = Math.max(0, this.state.invulnerable - delta);
+    this.feedbackTimer = Math.max(0, this.feedbackTimer - delta);
+    this.shake = Math.max(0, this.shake - delta);
 
-    const accel = this.keys.has('w') || this.keys.has('arrowup') ? 17 : 7.5;
+    const nearbyPickup = this.getNearbyPickup();
+    this.state.pickupAssist = nearbyPickup ? 1 : Math.max(0, this.state.pickupAssist - delta * 2.4);
+
+    const accel = this.keys.has('w') || this.keys.has('arrowup') ? 18.5 : 6.8;
     const brake = this.keys.has(' ') || this.keys.has('s') || this.keys.has('arrowdown');
-    const topSpeed = this.level.hill ? 30 : 34;
-    this.state.speed += (brake ? -26 : accel) * delta;
+    const baseTopSpeed = this.level.hill ? 30 : 35;
+    const topSpeed = nearbyPickup ? Math.min(baseTopSpeed, 16) : baseTopSpeed;
+    this.state.speed += (brake ? -30 : accel) * delta;
+    this.state.speed -= this.state.speed * (this.level.wetRoad ? 0.07 : 0.045) * delta;
     this.state.speed = clamp(this.state.speed, 4, topSpeed);
 
     const left = this.keys.has('a') || this.keys.has('arrowleft');
     const right = this.keys.has('d') || this.keys.has('arrowright');
-    const slide = this.level.wetRoad ? 0.72 : 1;
-    this.state.steer += ((right ? 1 : 0) - (left ? 1 : 0)) * 9 * delta * slide;
-    this.state.steer *= this.level.wetRoad ? 0.93 : 0.86;
+    const slide = this.level.wetRoad ? 0.82 : 1;
+    this.state.steer += ((right ? 1 : 0) - (left ? 1 : 0)) * 9.6 * delta * slide;
+    this.state.steer *= this.level.wetRoad ? 0.94 : 0.84;
 
     this.player.position.x = clamp(this.player.position.x + this.state.steer * delta * 6.2, -6.7, 6.7);
     this.player.position.z -= this.state.speed * delta;
@@ -322,6 +409,7 @@ export class KathmanduChaos {
     this.checkPickups();
     this.checkCollisions();
     this.checkEndState();
+    this.updateEffects(delta);
 
     this.world.step();
     this.updateCamera(delta);
@@ -355,16 +443,86 @@ export class KathmanduChaos {
     }
   }
 
+  getNearbyPickup() {
+    return this.pickups.find((pickup) => {
+      if (pickup.collected) return false;
+      const dx = Math.abs(this.player.position.x - pickup.mesh.position.x);
+      const dz = Math.abs(this.player.position.z - pickup.mesh.position.z);
+      return dx < 2.4 && dz < 6.2;
+    });
+  }
+
+  getCurrentTarget() {
+    const nextPickup = this.pickups
+      .filter((pickup) => !pickup.collected && pickup.mesh.position.z < this.player.position.z + 8)
+      .sort((a, b) => b.mesh.position.z - a.mesh.position.z)[0];
+
+    if (this.state.passengers < this.level.passengerGoal && nextPickup) {
+      return { label: 'Next passenger', position: nextPickup.mesh.position };
+    }
+    return { label: 'Finish gate', position: new THREE.Vector3(0, 0, -this.level.length) };
+  }
+
+  showFeedback(message, tone = 'good') {
+    if (!this.ui.feedback) return;
+    this.ui.feedback.textContent = message;
+    this.ui.feedback.classList.remove('bad', 'good', 'show');
+    this.ui.feedback.classList.add(tone, 'show');
+    this.feedbackTimer = 1.2;
+  }
+
+  flashHit() {
+    if (!this.ui.screenFlash) return;
+    this.ui.screenFlash.classList.add('hit');
+    window.setTimeout(() => this.ui.screenFlash.classList.remove('hit'), 90);
+  }
+
+  spawnPickupBurst(position) {
+    const group = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial({ color: 0xffcf42, transparent: true, opacity: 1 });
+    for (let i = 0; i < 10; i += 1) {
+      const bit = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), material.clone());
+      const angle = (i / 10) * Math.PI * 2;
+      bit.position.set(Math.cos(angle) * 0.35, 1.1 + Math.random() * 0.6, Math.sin(angle) * 0.35);
+      bit.userData.velocity = new THREE.Vector3(Math.cos(angle) * rand(1.5, 3), rand(1.2, 2.6), Math.sin(angle) * rand(1.5, 3));
+      group.add(bit);
+    }
+    group.position.copy(position);
+    this.scene.add(group);
+    this.effects.push({ group, age: 0, duration: 0.6 });
+  }
+
+  updateEffects(delta) {
+    for (let i = this.effects.length - 1; i >= 0; i -= 1) {
+      const effect = this.effects[i];
+      effect.age += delta;
+      const life = clamp(1 - effect.age / effect.duration, 0, 1);
+      effect.group.children.forEach((child) => {
+        child.position.addScaledVector(child.userData.velocity, delta);
+        child.userData.velocity.y -= 4.5 * delta;
+        child.material.opacity = life;
+      });
+      if (effect.age >= effect.duration) {
+        this.scene.remove(effect.group);
+        this.effects.splice(i, 1);
+      }
+    }
+  }
+
   checkPickups() {
     for (const pickup of this.pickups) {
       if (pickup.collected) continue;
       const dx = Math.abs(this.player.position.x - pickup.mesh.position.x);
       const dz = Math.abs(this.player.position.z - pickup.mesh.position.z);
-      if (dx < 1.8 && dz < 2.4) {
+      if (dx < 2.15 && dz < 3.1) {
         pickup.collected = true;
         pickup.mesh.visible = false;
         this.state.passengers += 1;
         this.state.score += pickup.value;
+        this.state.speed = Math.max(5, this.state.speed * 0.72);
+        this.spawnPickupBurst(pickup.mesh.position);
+        this.playPickupSound();
+        this.showFeedback(`Passenger boarded +${pickup.value}`, 'good');
       }
     }
   }
@@ -381,6 +539,10 @@ export class KathmanduChaos {
         this.state.score = Math.max(0, this.state.score - entity.penalty * 90);
         this.state.speed = Math.max(5, this.state.speed * 0.45);
         this.state.invulnerable = 1.2;
+        this.shake = entity.type === 'police' ? 0.45 : 0.3;
+        this.playHitSound(entity.type);
+        this.flashHit();
+        this.showFeedback(`Hit ${obstacleNames[entity.type]} -${entity.penalty} chance`, 'bad');
         this.player.scale.set(1.08, 0.92, 1.08);
         window.setTimeout(() => this.player.scale.set(1, 1, 1), 110);
         break;
@@ -397,6 +559,9 @@ export class KathmanduChaos {
     if (reachedFinish && this.state.passengers >= this.level.passengerGoal) {
       this.state.finished = true;
       this.state.score += Math.round((this.level.timeLimit - this.state.elapsed) * 10);
+      this.playTone(523, 0.1, 'triangle', 0.18);
+      this.playTone(659, 0.1, 'triangle', 0.18, 0.09);
+      this.playTone(784, 0.14, 'triangle', 0.18, 0.18);
       if (this.levelIndex < LEVELS.length - 1) {
         this.showOverlay(`Route cleared. Maya keeps the meter running into ${LEVELS[this.levelIndex + 1].district}.`, 'Next route', () => this.loadLevel(this.levelIndex + 1));
       } else {
@@ -404,6 +569,7 @@ export class KathmanduChaos {
       }
     } else if (reachedFinish || outOfTime || busted) {
       this.state.finished = true;
+      this.playHitSound('car');
       const reason = busted ? 'The tempo took too many hits.' : outOfTime ? 'The clock ran out in traffic.' : 'You reached the stop without enough passengers.';
       this.showOverlay(`${reason} Try the route again and keep the fares moving.`, 'Retry route', () => this.loadLevel(this.levelIndex));
     }
@@ -412,6 +578,11 @@ export class KathmanduChaos {
   updateCamera(delta) {
     const target = new THREE.Vector3(this.player.position.x * 0.38, 8.6, this.player.position.z + 15.5);
     this.camera.position.lerp(target, 1 - Math.pow(0.001, delta));
+    if (this.shake > 0) {
+      const amount = this.shake * 0.55;
+      this.camera.position.x += rand(-amount, amount);
+      this.camera.position.y += rand(-amount * 0.55, amount * 0.55);
+    }
     this.camera.lookAt(this.player.position.x * 0.2, 1.4, this.player.position.z - 18);
   }
 
@@ -422,6 +593,25 @@ export class KathmanduChaos {
     this.ui.time.textContent = Math.max(0, Math.ceil(this.level.timeLimit - this.state.elapsed)).toString();
     this.ui.hearts.textContent = Math.max(0, this.state.hearts).toString();
     this.ui.progressBar.style.width = `${progress * 100}%`;
+    if (this.ui.speedLines) {
+      this.ui.speedLines.style.opacity = `${clamp((this.state.speed - 16) / 18, 0, 0.42)}`;
+    }
+    if (this.ui.feedback && this.feedbackTimer <= 0) {
+      this.ui.feedback.classList.remove('show');
+    }
+    this.renderTargetGuide();
+  }
+
+  renderTargetGuide() {
+    if (!this.ui.targetGuide) return;
+    const target = this.getCurrentTarget();
+    const dx = target.position.x - this.player.position.x;
+    const dz = target.position.z - this.player.position.z;
+    const distance = Math.max(0, Math.round(Math.hypot(dx, dz)));
+    const angle = Math.atan2(dx, -dz);
+    this.ui.targetLabel.textContent = target.label;
+    this.ui.targetDistance.textContent = `${distance} m`;
+    this.ui.targetArrow.style.transform = `rotate(${angle}rad)`;
   }
 
   updateRouteUi() {
@@ -433,6 +623,7 @@ export class KathmanduChaos {
 
   showIntro() {
     this.showOverlay(this.level.story, this.levelIndex === 0 ? 'Start route' : 'Drive route', () => {
+      this.ensureAudio();
       this.ui.overlay.classList.add('hidden');
       this.pausedByOverlay = false;
       this.running = true;
@@ -445,7 +636,10 @@ export class KathmanduChaos {
     this.pausedByOverlay = true;
     this.ui.overlayText.textContent = text;
     this.ui.startButton.textContent = buttonLabel;
-    this.ui.startButton.onclick = action;
+    this.ui.startButton.onclick = () => {
+      this.ensureAudio();
+      action();
+    };
     this.ui.overlay.classList.remove('hidden');
   }
 

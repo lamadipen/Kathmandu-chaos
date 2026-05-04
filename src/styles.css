@@ -148,6 +148,111 @@ body {
   transition: width 120ms linear;
 }
 
+.target-guide {
+  position: fixed;
+  top: 98px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 194px;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 8px;
+  background: rgb(10 15 18 / 72%);
+  box-shadow: 0 16px 42px rgb(0 0 0 / 24%);
+  transform: translateX(-50%);
+  pointer-events: none;
+  backdrop-filter: blur(16px);
+}
+
+.target-guide strong,
+.target-guide span {
+  display: block;
+  line-height: 1.1;
+}
+
+.target-guide strong {
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.target-guide span {
+  margin-top: 4px;
+  color: #ffcf42;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.target-arrow {
+  width: 30px;
+  height: 30px;
+  background: #ffcf42;
+  clip-path: polygon(50% 0, 100% 100%, 50% 76%, 0 100%);
+  filter: drop-shadow(0 4px 10px rgb(0 0 0 / 45%));
+  transform-origin: 50% 56%;
+}
+
+.feedback {
+  position: fixed;
+  top: 170px;
+  left: 50%;
+  min-height: 34px;
+  padding: 8px 13px;
+  border-radius: 8px;
+  color: #111814;
+  background: #ffcf42;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 28%);
+  font-size: 0.9rem;
+  font-weight: 900;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+  pointer-events: none;
+}
+
+.feedback.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.feedback.bad {
+  color: #ffffff;
+  background: #d94848;
+}
+
+.feedback.good {
+  color: #102016;
+  background: #7bed9f;
+}
+
+.screen-flash {
+  position: fixed;
+  inset: 0;
+  background: rgb(217 72 72 / 28%);
+  opacity: 0;
+  transition: opacity 180ms ease;
+  pointer-events: none;
+}
+
+.screen-flash.hit {
+  opacity: 1;
+}
+
+.speed-lines {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  background:
+    linear-gradient(100deg, transparent 8%, rgb(255 255 255 / 16%) 9%, transparent 11%),
+    linear-gradient(80deg, transparent 88%, rgb(255 255 255 / 15%) 90%, transparent 92%);
+  background-size: 180px 100%, 220px 100%;
+  mix-blend-mode: screen;
+  transition: opacity 140ms ease;
+  pointer-events: none;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -244,6 +349,25 @@ button:focus-visible {
 
   .meters span {
     font-size: 0.58rem;
+  }
+
+  .target-guide {
+    top: 92px;
+    min-width: 176px;
+    min-height: 52px;
+    padding: 8px 11px;
+  }
+
+  .target-arrow {
+    width: 25px;
+    height: 25px;
+  }
+
+  .feedback {
+    top: 150px;
+    max-width: calc(100vw - 24px);
+    font-size: 0.82rem;
+    text-align: center;
   }
 
   .route-card {

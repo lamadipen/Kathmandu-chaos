@@ -4,7 +4,7 @@ A Three.js + Rapier arcade driving game prototype where you drive a classic Nepa
 
 You play as Maya, a tempo driver trying to save her family permit by completing routes across the valley. Pick up passengers, avoid traffic, cows, cyclists, and traffic police, then reach the finish before time runs out.
 
-Passengers are marked with bright yellow pickup rings and a floating `PICKUP` marker. Drive the tempo into the yellow ring to collect them.
+Passengers are marked with bright yellow pickup rings and a floating `PICKUP` marker. Drive the tempo through the yellow ring to collect them. The target guide points to the next passenger, then switches to the finish gate once enough passengers are aboard.
 
 ## Play Locally
 
@@ -41,6 +41,8 @@ Open the local URL Vite prints in your terminal.
 - Rapier physics world and colliders
 - Passenger pickup scoring
 - Yellow pickup rings and floating passenger markers
+- Target guide with distance and direction
+- Pickup chimes, collision feedback, screen flash, camera shake, and speed-line cues
 - Time limit, health/chances, route progress, and retry flow
 - Responsive HUD and overlay UI
 
