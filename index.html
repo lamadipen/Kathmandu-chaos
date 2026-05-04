@@ -60,6 +60,7 @@
           <button class="touch-button" data-touch="right" id="touchRight" type="button" aria-label="Steer right">›</button>
         </div>
         <button class="touch-button touch-pause" data-touch="pause" id="touchPause" type="button" aria-label="Pause">Ⅱ</button>
+        <button class="touch-button touch-horn" data-touch="horn" id="touchHorn" type="button" aria-label="Horn">Horn</button>
         <div class="touch-pedals">
           <button class="touch-button brake" data-touch="brake" id="touchBrake" type="button" aria-label="Brake">Brake</button>
           <button class="touch-button go" data-touch="accelerate" id="touchAccelerate" type="button" aria-label="Accelerate">Go</button>
@@ -113,6 +114,10 @@
                 <button class="secondary-action" id="audioToggle" type="button">Audio on</button>
                 <button class="secondary-action" id="resetProgress" type="button">Reset progress</button>
               </div>
+              <label class="audio-control">
+                <span>Volume</span>
+                <input id="volumeSlider" type="range" min="0" max="100" value="80" />
+              </label>
               <button id="garageStart" type="button">Start route</button>
             </aside>
           </section>
@@ -155,8 +160,13 @@
           <button class="secondary-action" id="restartButton" type="button">Restart route</button>
           <button class="secondary-action" id="garageButton" type="button">Garage</button>
           <button class="secondary-action" id="pauseAudioToggle" type="button">Audio on</button>
+          <label class="audio-control">
+            <span>Volume</span>
+            <input id="pauseVolumeSlider" type="range" min="0" max="100" value="80" />
+          </label>
           <div class="keys">
             <span>Esc / P</span><span>Pause</span>
+            <span>H</span><span>Horn</span>
             <span>A / D</span><span>Steer</span>
             <span>W / S</span><span>Speed</span>
             <span>Space</span><span>Brake</span>

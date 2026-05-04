@@ -45,6 +45,9 @@ export class KathmanduChaos {
     this.selectedRoute = 0;
     this.progress = this.loadProgress();
     this.audioMuted = this.progress.audioMuted;
+    this.audioVolume = this.progress.audioVolume;
+    this.nextMusicTime = 0;
+    this.musicStep = 0;
     this.paused = false;
     this.touchInput = {
       left: false,
@@ -79,10 +82,11 @@ export class KathmanduChaos {
           brakes: clamp(Number(saved?.upgrades?.brakes ?? 0), 0, 3),
           handling: clamp(Number(saved?.upgrades?.handling ?? 0), 0, 3)
         },
-        audioMuted: Boolean(saved?.audioMuted)
+        audioMuted: Boolean(saved?.audioMuted),
+        audioVolume: clamp(Number(saved?.audioVolume ?? 0.8), 0, 1)
       };
     } catch {
-      return { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: false };
+      return { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: false, audioVolume: 0.8 };
     }
   }
 
@@ -94,6 +98,8 @@ export class KathmanduChaos {
     this.ui.garageStart?.addEventListener('click', () => this.startSelectedRoute());
     this.ui.audioToggle?.addEventListener('click', () => this.toggleAudio());
     this.ui.pauseAudioToggle?.addEventListener('click', () => this.toggleAudio());
+    this.ui.volumeSlider?.addEventListener('input', (event) => this.setAudioVolume(Number(event.target.value) / 100));
+    this.ui.pauseVolumeSlider?.addEventListener('input', (event) => this.setAudioVolume(Number(event.target.value) / 100));
     this.ui.resetProgress?.addEventListener('click', () => this.confirmResetProgress());
     this.ui.resumeButton?.addEventListener('click', () => this.resumeGame());
     this.ui.restartButton?.addEventListener('click', () => this.startRoute(this.levelIndex));
@@ -150,6 +156,7 @@ export class KathmanduChaos {
     this.pausedByOverlay = false;
     this.paused = false;
     this.running = true;
+    if (this.audio) this.nextMusicTime = this.audio.ctx.currentTime + 0.1;
     this.clock.getDelta();
   }
 
@@ -220,7 +227,7 @@ export class KathmanduChaos {
   confirmResetProgress() {
     const confirmed = window.confirm('Reset unlocked routes, best fares, upgrades, and fare bank?');
     if (!confirmed) return;
-    this.progress = { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted };
+    this.progress = { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume };
     this.selectedRoute = 0;
     this.saveProgress();
     this.loadLevel(0, { showIntro: false });
@@ -249,6 +256,12 @@ export class KathmanduChaos {
       if (event.key === 'Escape' || event.key.toLowerCase() === 'p') {
         event.preventDefault();
         this.togglePause();
+        return;
+      }
+      if (event.key.toLowerCase() === 'h' && !event.repeat) {
+        event.preventDefault();
+        this.ensureAudio();
+        this.playHorn();
         return;
       }
       this.keys.add(event.key.toLowerCase());
@@ -281,6 +294,11 @@ export class KathmanduChaos {
     this.ui.touchPause?.addEventListener('click', (event) => {
       event.preventDefault();
       this.togglePause();
+    });
+    this.ui.touchHorn?.addEventListener('click', (event) => {
+      event.preventDefault();
+      this.ensureAudio();
+      this.playHorn();
     });
   }
 
@@ -328,15 +346,38 @@ export class KathmanduChaos {
     if (!AudioContext) return;
     const ctx = new AudioContext();
     const master = ctx.createGain();
-    master.gain.value = this.audioMuted ? 0 : 0.22;
+    const sfx = ctx.createGain();
+    const ambience = ctx.createGain();
+    const music = ctx.createGain();
+    const motor = ctx.createGain();
+    master.gain.value = this.audioMuted ? 0 : this.audioVolume;
+    sfx.gain.value = 0.24;
+    ambience.gain.value = 0.16;
+    music.gain.value = 0;
+    motor.gain.value = 0;
+    sfx.connect(master);
+    ambience.connect(master);
+    music.connect(master);
+    motor.connect(master);
     master.connect(ctx.destination);
-    this.audio = { ctx, master };
+    this.audio = { ctx, master, sfx, ambience, music, motor };
+    this.startAmbience();
+    this.startMotor();
+    this.nextMusicTime = ctx.currentTime + 0.12;
   }
 
   toggleAudio() {
     this.audioMuted = !this.audioMuted;
     this.progress.audioMuted = this.audioMuted;
-    if (this.audio) this.audio.master.gain.value = this.audioMuted ? 0 : 0.22;
+    if (this.audio) this.audio.master.gain.value = this.audioMuted ? 0 : this.audioVolume;
+    this.saveProgress();
+    this.renderAudioButtons();
+  }
+
+  setAudioVolume(value) {
+    this.audioVolume = clamp(value, 0, 1);
+    this.progress.audioVolume = this.audioVolume;
+    if (this.audio && !this.audioMuted) this.audio.master.gain.value = this.audioVolume;
     this.saveProgress();
     this.renderAudioButtons();
   }
@@ -345,11 +386,14 @@ export class KathmanduChaos {
     const label = this.audioMuted ? 'Audio off' : 'Audio on';
     if (this.ui.audioToggle) this.ui.audioToggle.textContent = label;
     if (this.ui.pauseAudioToggle) this.ui.pauseAudioToggle.textContent = label;
+    const sliderValue = Math.round(this.audioVolume * 100).toString();
+    if (this.ui.volumeSlider) this.ui.volumeSlider.value = sliderValue;
+    if (this.ui.pauseVolumeSlider) this.ui.pauseVolumeSlider.value = sliderValue;
   }
 
-  playTone(frequency, duration = 0.12, type = 'sine', gain = 0.3, when = 0) {
+  playTone(frequency, duration = 0.12, type = 'sine', gain = 0.3, when = 0, destination = null) {
     if (!this.audio) return;
-    const { ctx, master } = this.audio;
+    const { ctx } = this.audio;
     const start = ctx.currentTime + when;
     const osc = ctx.createOscillator();
     const amp = ctx.createGain();
@@ -359,14 +403,14 @@ export class KathmanduChaos {
     amp.gain.exponentialRampToValueAtTime(gain, start + 0.015);
     amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     osc.connect(amp);
-    amp.connect(master);
+    amp.connect(destination ?? this.audio.sfx);
     osc.start(start);
     osc.stop(start + duration + 0.04);
   }
 
   playNoise(duration = 0.18, gain = 0.16) {
     if (!this.audio) return;
-    const { ctx, master } = this.audio;
+    const { ctx } = this.audio;
     const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
@@ -380,8 +424,84 @@ export class KathmanduChaos {
     source.buffer = buffer;
     source.connect(filter);
     filter.connect(amp);
-    amp.connect(master);
+    amp.connect(this.audio.sfx);
     source.start();
+  }
+
+  startAmbience() {
+    if (!this.audio || this.audio.ambienceSource) return;
+    const { ctx, ambience } = this.audio;
+    const duration = 2;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < data.length; i += 1) {
+      last = last * 0.985 + (Math.random() * 2 - 1) * 0.015;
+      data[i] = last;
+    }
+    const source = ctx.createBufferSource();
+    const lowpass = ctx.createBiquadFilter();
+    const highpass = ctx.createBiquadFilter();
+    source.buffer = buffer;
+    source.loop = true;
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 900;
+    highpass.type = 'highpass';
+    highpass.frequency.value = 90;
+    source.connect(lowpass);
+    lowpass.connect(highpass);
+    highpass.connect(ambience);
+    source.start();
+    this.audio.ambienceSource = source;
+  }
+
+  startMotor() {
+    if (!this.audio || this.audio.motorOsc) return;
+    const { ctx, motor } = this.audio;
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 70;
+    filter.type = 'lowpass';
+    filter.frequency.value = 220;
+    osc.connect(filter);
+    filter.connect(motor);
+    osc.start();
+    this.audio.motorOsc = osc;
+    this.audio.motorFilter = filter;
+  }
+
+  updateAudio(delta) {
+    if (!this.audio) return;
+    const { ctx, motor, music, motorOsc, motorFilter } = this.audio;
+    const active = this.running && !this.pausedByOverlay;
+    const motorGain = active ? clamp(0.025 + this.state.speed / 900, 0.02, 0.075) : 0;
+    motor.gain.setTargetAtTime(motorGain, ctx.currentTime, 0.08);
+    music.gain.setTargetAtTime(active ? 0.07 : 0, ctx.currentTime, 0.25);
+    if (motorOsc) motorOsc.frequency.setTargetAtTime(62 + this.state.speed * 6.5, ctx.currentTime, 0.06);
+    if (motorFilter) motorFilter.frequency.setTargetAtTime(190 + this.state.speed * 13, ctx.currentTime, 0.08);
+    if (active) this.scheduleMusic(delta);
+  }
+
+  scheduleMusic() {
+    if (!this.audio) return;
+    const { ctx, music } = this.audio;
+    const notes = [220, 277.18, 329.63, 392, 329.63, 277.18, 246.94, 293.66];
+    while (this.nextMusicTime < ctx.currentTime + 0.35) {
+      const note = notes[this.musicStep % notes.length];
+      const accent = this.musicStep % 4 === 0 ? 0.07 : 0.045;
+      this.playTone(note, 0.16, 'triangle', accent, this.nextMusicTime - ctx.currentTime, music);
+      if (this.musicStep % 4 === 0) this.playTone(note / 2, 0.22, 'sine', 0.045, this.nextMusicTime - ctx.currentTime, music);
+      this.musicStep += 1;
+      this.nextMusicTime += 0.32;
+    }
+  }
+
+  playHorn() {
+    if (!this.audio) return;
+    this.playTone(392, 0.18, 'square', 0.18);
+    this.playTone(466.16, 0.2, 'square', 0.16, 0.04);
+    this.showFeedback('Horn!', 'good');
   }
 
   playPickupSound() {
@@ -1052,6 +1172,7 @@ export class KathmanduChaos {
     requestAnimationFrame(() => this.animate());
     const delta = Math.min(this.clock.getDelta(), 0.033);
     this.update(delta);
+    this.updateAudio(delta);
     this.renderer.render(this.scene, this.camera);
   }
 }

@@ -389,6 +389,20 @@ body {
   pointer-events: auto;
 }
 
+.touch-horn {
+  position: absolute;
+  left: 14px;
+  bottom: 106px;
+  width: 54px;
+  height: 54px;
+  min-height: 54px;
+  color: #111814;
+  background: #7bed9f;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  pointer-events: auto;
+}
+
 .touch-button.active {
   transform: translateY(2px) scale(0.96);
   filter: brightness(1.18);
@@ -579,6 +593,23 @@ body {
 
 .garage-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.audio-control {
+  display: grid;
+  gap: 8px;
+}
+
+.audio-control span {
+  color: #cbd5dd;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.audio-control input {
+  width: 100%;
+  accent-color: #ffcf42;
 }
 
 .upgrade-actions button,

@@ -31,6 +31,7 @@ Open the local URL Vite prints in your terminal.
 | `A` or `ArrowLeft` | Steer left |
 | `D` or `ArrowRight` | Steer right |
 | `Space` | Brake |
+| `H` | Horn |
 
 On mobile, use the on-screen controls:
 
@@ -40,6 +41,7 @@ On mobile, use the on-screen controls:
 | `Go` | Accelerate |
 | `Brake` | Brake |
 | `Ⅱ` | Pause |
+| `Horn` | Horn |
 
 ## Current Features
 
@@ -62,6 +64,7 @@ On mobile, use the on-screen controls:
 - Optional GLB/GLTF model-loading pipeline for future character assets
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - Mobile touch controls for steering, acceleration, braking, and pause
+- Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 
 ## Project Structure
 
