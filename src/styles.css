@@ -109,6 +109,13 @@ body {
   font-weight: 900;
 }
 
+.objective {
+  margin-top: 5px;
+  color: #ffcf42;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .route-card p {
   margin: 8px 0 13px;
   color: #e2e8f0;

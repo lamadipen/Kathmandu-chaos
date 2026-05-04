@@ -139,6 +139,18 @@ export function createPassenger(index = 0) {
   for (const x of [-0.18, 0.18]) {
     group.add(mesh(new THREE.BoxGeometry(0.1, 0.5, 0.12), dark, [x, 0.05, 0]));
   }
+
+  const marker = new THREE.Group();
+  marker.name = 'pickupMarker';
+  marker.add(mesh(new THREE.TorusGeometry(0.72, 0.055, 10, 40), mat(0xffcf42, { emissive: 0x6b4f00, emissiveIntensity: 0.35 }), [0, 0.04, 0], [Math.PI / 2, 0, 0]));
+  marker.add(mesh(new THREE.CylinderGeometry(0.08, 0.34, 0.68, 4), mat(0xffcf42, { emissive: 0x6b4f00, emissiveIntensity: 0.28 }), [0, 1.95, 0], [0, Math.PI / 4, Math.PI]));
+
+  const board = textPlane('PICKUP', 1.12, 0.34, '#ffcf42', '#141414');
+  board.name = 'pickupBillboard';
+  board.position.set(0, 1.55, 0);
+  marker.add(board);
+  group.add(marker);
+
   return markShadows(group);
 }
 

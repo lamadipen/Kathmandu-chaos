@@ -342,6 +342,15 @@ export class KathmanduChaos {
       if (!pickup.collected) {
         pickup.mesh.rotation.y += delta * 1.8;
         pickup.mesh.position.y = Math.sin(this.state.elapsed * 4 + pickup.z) * 0.08;
+        const marker = pickup.mesh.getObjectByName('pickupMarker');
+        if (marker) {
+          const pulse = 1 + Math.sin(this.state.elapsed * 5 + pickup.z) * 0.1;
+          marker.scale.set(pulse, pulse, pulse);
+        }
+        const billboard = pickup.mesh.getObjectByName('pickupBillboard');
+        if (billboard) {
+          billboard.quaternion.copy(this.camera.quaternion);
+        }
       }
     }
   }
