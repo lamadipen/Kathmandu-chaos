@@ -42,6 +42,14 @@
         </div>
       </section>
 
+      <section class="minimap" id="minimap">
+        <span>Start</span>
+        <div class="minimap-track" id="minimapTrack">
+          <i id="minimapPlayer"></i>
+        </div>
+        <span>Finish</span>
+      </section>
+
       <div class="feedback" id="feedback" aria-live="polite"></div>
       <div class="screen-flash" id="screenFlash"></div>
       <div class="speed-lines" id="speedLines"></div>
@@ -54,8 +62,8 @@
               <h1>Kathmandu Chaos</h1>
             </div>
             <div class="garage-save">
-              <span>Unlocked</span>
-              <strong id="garageUnlocked">1/5</strong>
+              <span>Fare bank</span>
+              <strong id="garageWallet">0</strong>
             </div>
           </header>
 
@@ -77,12 +85,22 @@
 
               <div class="upgrade-list">
                 <span class="panel-label">Tempo stats</span>
-                <div><span>Battery</span><i style="--value: 72%"></i></div>
-                <div><span>Brakes</span><i style="--value: 64%"></i></div>
-                <div><span>Handling</span><i style="--value: 68%"></i></div>
+                <div><span>Battery</span><i id="batteryBar" style="--value: 72%"></i></div>
+                <div><span>Brakes</span><i id="brakesBar" style="--value: 64%"></i></div>
+                <div><span>Handling</span><i id="handlingBar" style="--value: 68%"></i></div>
+              </div>
+
+              <div class="upgrade-actions">
+                <button data-upgrade="battery" id="batteryUpgrade" type="button">Battery</button>
+                <button data-upgrade="brakes" id="brakesUpgrade" type="button">Brakes</button>
+                <button data-upgrade="handling" id="handlingUpgrade" type="button">Handling</button>
               </div>
 
               <p class="garage-hint" id="garageHint">Clear routes to unlock harder Kathmandu runs and future vehicle upgrades.</p>
+              <div class="garage-actions">
+                <button class="secondary-action" id="audioToggle" type="button">Audio on</button>
+                <button class="secondary-action" id="resetProgress" type="button">Reset progress</button>
+              </div>
               <button id="garageStart" type="button">Start route</button>
             </aside>
           </section>
@@ -109,6 +127,24 @@
           <button id="startButton" type="button">Start route</button>
           <button class="secondary-action hidden" id="secondaryButton" type="button">Garage</button>
           <div class="keys">
+            <span>A / D</span><span>Steer</span>
+            <span>W / S</span><span>Speed</span>
+            <span>Space</span><span>Brake</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="pause-menu hidden" id="pauseMenu">
+        <div class="panel">
+          <p class="kicker">Paused</p>
+          <h1>Route Break</h1>
+          <p>Resume the route, restart the run, or head back to the garage.</p>
+          <button id="resumeButton" type="button">Resume</button>
+          <button class="secondary-action" id="restartButton" type="button">Restart route</button>
+          <button class="secondary-action" id="garageButton" type="button">Garage</button>
+          <button class="secondary-action" id="pauseAudioToggle" type="button">Audio on</button>
+          <div class="keys">
+            <span>Esc / P</span><span>Pause</span>
             <span>A / D</span><span>Steer</span>
             <span>W / S</span><span>Speed</span>
             <span>Space</span><span>Brake</span>

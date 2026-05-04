@@ -47,6 +47,10 @@ Open the local URL Vite prints in your terminal.
 - Responsive HUD and overlay UI
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
 - Campaign progress saved with `localStorage`
+- Pause/settings menu with resume, restart, garage, audio toggle, and reset progress
+- Route minimap with passenger and police markers
+- Upgradeable tempo stats for battery, brakes, and handling
+- Optional GLB/GLTF model-loading pipeline for future character assets
 
 ## Project Structure
 
@@ -57,7 +61,10 @@ src/
   game/
     KathmanduChaos.js     Core game loop, rendering, physics, input, entities
     levels.js             Level data and route tuning
+    modelLoader.js        Cached GLB/GLTF loader for future external models
     visuals.js            Reusable low-poly Nepali-themed mesh factories
+public/
+  models/                 Drop zone for optional character GLB assets
 ```
 
 ## Campaign Progress
@@ -68,6 +75,26 @@ The garage screen tracks progression in browser `localStorage`.
 - Clearing a route unlocks the next route.
 - Best fare is saved per route.
 - Replaying a cleared route can improve its best fare.
+- Cleared-route fare is added to the garage fare bank.
+- Fare bank can buy Battery, Brakes, and Handling upgrades.
+
+## Pause And Settings
+
+During a route, press `Esc` or `P` to pause.
+
+Pause menu options:
+
+- Resume
+- Restart route
+- Return to garage
+- Toggle audio
+- Review controls
+
+The garage also includes audio toggle and reset progress controls.
+
+## External 3D Models
+
+The current game uses code-generated low-poly characters so it runs without asset downloads. To test real characters later, place `.glb` files in `public/models/` and use `src/game/modelLoader.js` to load cached clones with Three.js `GLTFLoader`.
 
 ## Extending Levels
 

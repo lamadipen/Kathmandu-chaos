@@ -21,6 +21,11 @@ const obstacleNames = {
   police: 'traffic police'
 };
 const progressKey = 'kathmandu-chaos-progress-v1';
+const upgradeConfig = {
+  battery: { base: 72, step: 8, cost: 550 },
+  brakes: { base: 64, step: 9, cost: 450 },
+  handling: { base: 68, step: 8, cost: 500 }
+};
 
 export class KathmanduChaos {
   constructor({ canvas, ui }) {
@@ -39,6 +44,8 @@ export class KathmanduChaos {
     this.shake = 0;
     this.selectedRoute = 0;
     this.progress = this.loadProgress();
+    this.audioMuted = this.progress.audioMuted;
+    this.paused = false;
   }
 
   async boot() {
@@ -58,10 +65,17 @@ export class KathmanduChaos {
       const saved = JSON.parse(window.localStorage.getItem(progressKey));
       return {
         unlocked: clamp(Number(saved?.unlocked ?? 0), 0, LEVELS.length - 1),
-        bestScores: saved?.bestScores ?? {}
+        bestScores: saved?.bestScores ?? {},
+        wallet: Math.max(0, Number(saved?.wallet ?? 0)),
+        upgrades: {
+          battery: clamp(Number(saved?.upgrades?.battery ?? 0), 0, 3),
+          brakes: clamp(Number(saved?.upgrades?.brakes ?? 0), 0, 3),
+          handling: clamp(Number(saved?.upgrades?.handling ?? 0), 0, 3)
+        },
+        audioMuted: Boolean(saved?.audioMuted)
       };
     } catch {
-      return { unlocked: 0, bestScores: {} };
+      return { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: false };
     }
   }
 
@@ -71,6 +85,15 @@ export class KathmanduChaos {
 
   setupGarage() {
     this.ui.garageStart?.addEventListener('click', () => this.startSelectedRoute());
+    this.ui.audioToggle?.addEventListener('click', () => this.toggleAudio());
+    this.ui.pauseAudioToggle?.addEventListener('click', () => this.toggleAudio());
+    this.ui.resetProgress?.addEventListener('click', () => this.confirmResetProgress());
+    this.ui.resumeButton?.addEventListener('click', () => this.resumeGame());
+    this.ui.restartButton?.addEventListener('click', () => this.startRoute(this.levelIndex));
+    this.ui.garageButton?.addEventListener('click', () => this.showGarage());
+    [this.ui.batteryUpgrade, this.ui.brakesUpgrade, this.ui.handlingUpgrade].forEach((button) => {
+      button?.addEventListener('click', () => this.buyUpgrade(button.dataset.upgrade));
+    });
     this.ui.garageRoutes?.addEventListener('click', (event) => {
       const card = event.target.closest('[data-route-index]');
       if (!card) return;
@@ -86,7 +109,9 @@ export class KathmanduChaos {
   showGarage() {
     this.running = false;
     this.pausedByOverlay = true;
+    this.paused = false;
     this.ui.overlay.classList.add('hidden');
+    this.ui.pauseMenu?.classList.add('hidden');
     this.ui.garage.classList.remove('hidden');
     this.selectRoute(Math.min(this.selectedRoute, this.progress.unlocked));
     this.renderGarage();
@@ -109,15 +134,17 @@ export class KathmanduChaos {
     this.selectedRoute = clamp(index, 0, this.progress.unlocked);
     this.ensureAudio();
     this.hideGarage();
+    this.ui.pauseMenu?.classList.add('hidden');
     this.loadLevel(this.selectedRoute, { showIntro: false });
     this.pausedByOverlay = false;
+    this.paused = false;
     this.running = true;
     this.clock.getDelta();
   }
 
   renderGarage() {
     if (!this.ui.garageRoutes) return;
-    this.ui.garageUnlocked.textContent = `${this.progress.unlocked + 1}/${LEVELS.length}`;
+    this.ui.garageWallet.textContent = this.progress.wallet.toString();
     this.ui.garageRoutes.innerHTML = LEVELS.map((level, index) => {
       const locked = index > this.progress.unlocked;
       const selected = index === this.selectedRoute;
@@ -138,9 +165,55 @@ export class KathmanduChaos {
     this.ui.garagePassengers.textContent = level.passengerGoal.toString();
     this.ui.garageTime.textContent = level.timeLimit.toString();
     this.ui.garageBest.textContent = best.toString();
+    this.renderUpgradeUi();
+    this.renderAudioButtons();
     this.ui.garageHint.textContent = this.selectedRoute === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1
       ? `Clear this route to unlock ${LEVELS[this.progress.unlocked + 1].name}.`
       : 'Replay cleared routes to improve your best fare.';
+  }
+
+  renderUpgradeUi() {
+    for (const key of Object.keys(upgradeConfig)) {
+      const level = this.progress.upgrades[key];
+      const percent = upgradeConfig[key].base + level * upgradeConfig[key].step;
+      this.ui[`${key}Bar`].style.setProperty('--value', `${percent}%`);
+      const button = this.ui[`${key}Upgrade`];
+      const cost = this.getUpgradeCost(key);
+      button.textContent = level >= 3 ? `${this.labelUpgrade(key)} max` : `${this.labelUpgrade(key)} ${cost}`;
+      button.disabled = level >= 3 || this.progress.wallet < cost;
+    }
+  }
+
+  labelUpgrade(key) {
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  getUpgradeCost(key) {
+    return upgradeConfig[key].cost * (this.progress.upgrades[key] + 1);
+  }
+
+  buyUpgrade(key) {
+    if (!upgradeConfig[key] || this.progress.upgrades[key] >= 3) return;
+    const cost = this.getUpgradeCost(key);
+    if (this.progress.wallet < cost) {
+      this.ui.garageHint.textContent = `Need ${cost} fare for ${this.labelUpgrade(key)}.`;
+      return;
+    }
+    this.progress.wallet -= cost;
+    this.progress.upgrades[key] += 1;
+    this.saveProgress();
+    this.ui.garageHint.textContent = `${this.labelUpgrade(key)} upgraded. The tempo will feel better on the next route.`;
+    this.renderGarage();
+  }
+
+  confirmResetProgress() {
+    const confirmed = window.confirm('Reset unlocked routes, best fares, upgrades, and fare bank?');
+    if (!confirmed) return;
+    this.progress = { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted };
+    this.selectedRoute = 0;
+    this.saveProgress();
+    this.loadLevel(0, { showIntro: false });
+    this.showGarage();
   }
 
   setupRenderer() {
@@ -162,9 +235,41 @@ export class KathmanduChaos {
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'a', 'd', 'w', 's'].includes(event.key)) {
         event.preventDefault();
       }
+      if (event.key === 'Escape' || event.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        this.togglePause();
+        return;
+      }
       this.keys.add(event.key.toLowerCase());
     });
     window.addEventListener('keyup', (event) => this.keys.delete(event.key.toLowerCase()));
+  }
+
+  togglePause() {
+    if (this.ui.garage && !this.ui.garage.classList.contains('hidden')) return;
+    if (this.ui.overlay && !this.ui.overlay.classList.contains('hidden')) return;
+    if (!this.running && !this.paused) return;
+    if (this.paused) {
+      this.resumeGame();
+    } else {
+      this.pauseGame();
+    }
+  }
+
+  pauseGame() {
+    this.paused = true;
+    this.running = false;
+    this.pausedByOverlay = true;
+    this.ui.pauseMenu?.classList.remove('hidden');
+    this.renderAudioButtons();
+  }
+
+  resumeGame() {
+    this.paused = false;
+    this.pausedByOverlay = false;
+    this.running = true;
+    this.ui.pauseMenu?.classList.add('hidden');
+    this.clock.getDelta();
   }
 
   startFromOverlay() {
@@ -184,9 +289,23 @@ export class KathmanduChaos {
     if (!AudioContext) return;
     const ctx = new AudioContext();
     const master = ctx.createGain();
-    master.gain.value = 0.22;
+    master.gain.value = this.audioMuted ? 0 : 0.22;
     master.connect(ctx.destination);
     this.audio = { ctx, master };
+  }
+
+  toggleAudio() {
+    this.audioMuted = !this.audioMuted;
+    this.progress.audioMuted = this.audioMuted;
+    if (this.audio) this.audio.master.gain.value = this.audioMuted ? 0 : 0.22;
+    this.saveProgress();
+    this.renderAudioButtons();
+  }
+
+  renderAudioButtons() {
+    const label = this.audioMuted ? 'Audio off' : 'Audio on';
+    if (this.ui.audioToggle) this.ui.audioToggle.textContent = label;
+    if (this.ui.pauseAudioToggle) this.ui.pauseAudioToggle.textContent = label;
   }
 
   playTone(frequency, duration = 0.12, type = 'sine', gain = 0.3, when = 0) {
@@ -263,6 +382,7 @@ export class KathmanduChaos {
     this.entities = [];
     this.pickups = [];
     this.effects = [];
+    this.spawnedSlots = [];
     this.shake = 0;
     this.feedbackTimer = 0;
 
@@ -415,6 +535,7 @@ export class KathmanduChaos {
     this.addObstacles('cyclist', this.level.cyclists);
     this.addObstacles('police', this.level.police);
     this.addFinishGate();
+    this.renderMinimapMarkers();
   }
 
   addPassengers() {
@@ -424,6 +545,7 @@ export class KathmanduChaos {
       const z = -spacing * (i + 0.75) + rand(-12, 12);
       const passenger = this.createPassenger(lane, z, i);
       this.pickups.push({ mesh: passenger, collected: false, z, x: lane, value: 120 + i * 15 });
+      this.spawnedSlots.push({ x: lane, z, radius: 10 });
     }
   }
 
@@ -438,8 +560,7 @@ export class KathmanduChaos {
     const start = -55;
     const end = -this.level.length + 60;
     for (let i = 0; i < count; i += 1) {
-      const z = rand(start, end);
-      const x = choice(LANES);
+      const { x, z } = this.findObstacleSlot(start, end, type);
       const mesh = this.createObstacleMesh(type);
       mesh.position.set(x, 0.6, z);
       this.scene.add(mesh);
@@ -448,7 +569,21 @@ export class KathmanduChaos {
       const half = type === 'cyclist' ? [0.55, 0.9, 0.9] : type === 'cow' ? [0.9, 0.65, 1.25] : [1.1, 0.75, 1.6];
       this.world.createCollider(RAPIER.ColliderDesc.cuboid(...half), rb);
       this.entities.push({ type, mesh, body: rb, x, z, hit: false, wobble: rand(0, Math.PI * 2), penalty: type === 'police' ? 2 : 1 });
+      this.spawnedSlots.push({ x, z, radius: type === 'police' ? 13 : 9 });
     }
+  }
+
+  findObstacleSlot(start, end, type) {
+    const minGap = type === 'police' ? 15 : 10;
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const z = rand(start, end);
+      const lanePool = type === 'cow' ? LANES : LANES.slice(1, -1);
+      const x = choice(lanePool);
+      const blocked = this.spawnedSlots.some((slot) => Math.abs(slot.z - z) < slot.radius + minGap && Math.abs(slot.x - x) < 1.8);
+      const nearPassenger = this.pickups.some((pickup) => Math.abs(pickup.z - z) < 16 && Math.abs(pickup.x - x) < 3.1);
+      if (!blocked && !nearPassenger) return { x, z };
+    }
+    return { x: choice(LANES.slice(1, -1)), z: rand(start, end) };
   }
 
   createObstacleMesh(type) {
@@ -481,18 +616,21 @@ export class KathmanduChaos {
     const nearbyPickup = this.getNearbyPickup();
     this.state.pickupAssist = nearbyPickup ? 1 : Math.max(0, this.state.pickupAssist - delta * 2.4);
 
-    const accel = this.keys.has('w') || this.keys.has('arrowup') ? 18.5 : 6.8;
+    const batteryBoost = this.progress.upgrades.battery * 1.7;
+    const brakeBoost = this.progress.upgrades.brakes * 3.4;
+    const handlingBoost = this.progress.upgrades.handling * 0.7;
+    const accel = this.keys.has('w') || this.keys.has('arrowup') ? 18.5 + batteryBoost : 6.8 + batteryBoost * 0.35;
     const brake = this.keys.has(' ') || this.keys.has('s') || this.keys.has('arrowdown');
-    const baseTopSpeed = this.level.hill ? 30 : 35;
+    const baseTopSpeed = (this.level.hill ? 30 : 35) + this.progress.upgrades.battery * 2.2;
     const topSpeed = nearbyPickup ? Math.min(baseTopSpeed, 16) : baseTopSpeed;
-    this.state.speed += (brake ? -30 : accel) * delta;
+    this.state.speed += (brake ? -30 - brakeBoost : accel) * delta;
     this.state.speed -= this.state.speed * (this.level.wetRoad ? 0.07 : 0.045) * delta;
     this.state.speed = clamp(this.state.speed, 4, topSpeed);
 
     const left = this.keys.has('a') || this.keys.has('arrowleft');
     const right = this.keys.has('d') || this.keys.has('arrowright');
     const slide = this.level.wetRoad ? 0.82 : 1;
-    this.state.steer += ((right ? 1 : 0) - (left ? 1 : 0)) * 9.6 * delta * slide;
+    this.state.steer += ((right ? 1 : 0) - (left ? 1 : 0)) * (9.6 + handlingBoost) * delta * slide;
     this.state.steer *= this.level.wetRoad ? 0.94 : 0.84;
 
     this.player.position.x = clamp(this.player.position.x + this.state.steer * delta * 6.2, -6.7, 6.7);
@@ -657,6 +795,7 @@ export class KathmanduChaos {
       this.state.score += Math.round((this.level.timeLimit - this.state.elapsed) * 10);
       const finalScore = Math.round(this.state.score);
       this.progress.bestScores[this.levelIndex] = Math.max(this.progress.bestScores[this.levelIndex] ?? 0, finalScore);
+      this.progress.wallet += finalScore;
       if (this.levelIndex === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1) {
         this.progress.unlocked += 1;
       }
@@ -713,6 +852,33 @@ export class KathmanduChaos {
       this.ui.feedback.classList.remove('show');
     }
     this.renderTargetGuide();
+    this.renderMinimap();
+  }
+
+  renderMinimapMarkers() {
+    if (!this.ui.minimapTrack) return;
+    this.ui.minimapTrack.querySelectorAll('.minimap-dot').forEach((node) => node.remove());
+    const addDot = (className, z) => {
+      const dot = document.createElement('b');
+      dot.className = `minimap-dot ${className}`;
+      const progress = clamp(Math.abs(z - 12) / (this.level.length + 12), 0, 1);
+      dot.style.left = `${progress * 100}%`;
+      this.ui.minimapTrack.appendChild(dot);
+    };
+    this.pickups.forEach((pickup) => addDot('passenger-dot', pickup.z));
+    this.entities
+      .filter((entity) => entity.type === 'police')
+      .forEach((entity) => addDot('police-dot', entity.z));
+  }
+
+  renderMinimap() {
+    if (!this.ui.minimapPlayer) return;
+    const progress = clamp(Math.abs(this.player.position.z - 12) / (this.level.length + 12), 0, 1);
+    this.ui.minimapPlayer.style.left = `${progress * 100}%`;
+    this.pickups.forEach((pickup, index) => {
+      const dot = this.ui.minimapTrack?.querySelectorAll('.passenger-dot')[index];
+      if (dot) dot.classList.toggle('collected', pickup.collected);
+    });
   }
 
   renderTargetGuide() {

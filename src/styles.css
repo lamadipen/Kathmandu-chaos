@@ -198,6 +198,65 @@ body {
   transform-origin: 50% 56%;
 }
 
+.minimap {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  grid-template-columns: auto minmax(170px, 240px) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 8px;
+  background: rgb(10 15 18 / 72%);
+  box-shadow: 0 16px 42px rgb(0 0 0 / 24%);
+  color: #dbe5ec;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  pointer-events: none;
+  backdrop-filter: blur(16px);
+}
+
+.minimap-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 16%);
+}
+
+.minimap-track i,
+.minimap-dot {
+  position: absolute;
+  top: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.minimap-track i {
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  background: #ffcf42;
+  box-shadow: 0 0 0 3px rgb(255 207 66 / 20%);
+}
+
+.minimap-dot {
+  width: 8px;
+  height: 8px;
+  background: #7bed9f;
+}
+
+.minimap-dot.police-dot {
+  background: #d94848;
+}
+
+.minimap-dot.collected {
+  opacity: 0.25;
+}
+
 .feedback {
   position: fixed;
   top: 170px;
@@ -433,6 +492,29 @@ body {
   gap: 9px;
 }
 
+.upgrade-actions,
+.garage-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.garage-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upgrade-actions button,
+.garage-actions button {
+  min-height: 42px;
+  padding: 8px;
+  font-size: 0.78rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .upgrade-list div {
   display: grid;
   grid-template-columns: 74px 1fr;
@@ -471,6 +553,16 @@ body {
   place-items: center;
   padding: 22px;
   background: linear-gradient(180deg, rgb(12 16 20 / 36), rgb(12 16 20 / 78));
+}
+
+.pause-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: linear-gradient(180deg, rgb(12 16 20 / 28%), rgb(12 16 20 / 82%));
 }
 
 .overlay.hidden {
@@ -588,6 +680,13 @@ button:focus-visible {
     text-align: center;
   }
 
+  .minimap {
+    right: 12px;
+    bottom: 88px;
+    left: 12px;
+    grid-template-columns: auto 1fr auto;
+  }
+
   .garage {
     align-items: start;
     padding: 14px;
@@ -612,6 +711,11 @@ button:focus-visible {
 
   .stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .upgrade-actions,
+  .garage-actions {
+    grid-template-columns: 1fr;
   }
 
   .route-card {
