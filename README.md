@@ -45,6 +45,8 @@ Open the local URL Vite prints in your terminal.
 - Pickup chimes, collision feedback, screen flash, camera shake, and speed-line cues
 - Time limit, health/chances, route progress, and retry flow
 - Responsive HUD and overlay UI
+- Garage route-selection screen with locked routes, tempo stats, and saved best fares
+- Campaign progress saved with `localStorage`
 
 ## Project Structure
 
@@ -57,6 +59,15 @@ src/
     levels.js             Level data and route tuning
     visuals.js            Reusable low-poly Nepali-themed mesh factories
 ```
+
+## Campaign Progress
+
+The garage screen tracks progression in browser `localStorage`.
+
+- Route 1 is unlocked by default.
+- Clearing a route unlocks the next route.
+- Best fare is saved per route.
+- Replaying a cleared route can improve its best fare.
 
 ## Extending Levels
 

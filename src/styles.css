@@ -21,6 +21,10 @@ body {
   min-width: 320px;
 }
 
+.hidden {
+  display: none !important;
+}
+
 #game {
   display: block;
   width: 100vw;
@@ -253,9 +257,216 @@ body {
   pointer-events: none;
 }
 
+.garage {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  align-items: center;
+  padding: 22px;
+  overflow: auto;
+  background: linear-gradient(180deg, rgb(12 16 20 / 64%), rgb(12 16 20 / 88%));
+}
+
+.garage-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.garage-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 45%);
+}
+
+.garage-header h1 {
+  max-width: 620px;
+}
+
+.garage-save {
+  min-width: 116px;
+  padding: 12px 14px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 8px;
+  background: rgb(10 15 18 / 72%);
+  box-shadow: 0 16px 42px rgb(0 0 0 / 24%);
+  backdrop-filter: blur(16px);
+}
+
+.garage-save span,
+.panel-label {
+  display: block;
+  color: #ffcf42;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.garage-save strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.garage-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(330px, 420px);
+  gap: 14px;
+}
+
+.route-select {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+
+.route-option {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 8px;
+  color: #f8fafc;
+  background: rgb(10 15 18 / 72%);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 18%);
+  text-align: left;
+  backdrop-filter: blur(16px);
+}
+
+.route-option span {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #111814;
+  background: #ffcf42;
+  font-weight: 900;
+}
+
+.route-option strong {
+  align-self: end;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+.route-option small {
+  align-self: start;
+  margin-top: 5px;
+  color: #cbd5dd;
+  font-weight: 800;
+}
+
+.route-option.selected {
+  border-color: #ffcf42;
+  box-shadow: 0 0 0 2px rgb(255 207 66 / 20%), 0 16px 42px rgb(0 0 0 / 24%);
+}
+
+.route-option.locked {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.tempo-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 8px;
+  background: rgb(10 15 18 / 78%);
+  box-shadow: 0 16px 42px rgb(0 0 0 / 24%);
+  backdrop-filter: blur(16px);
+}
+
+.tempo-panel h2 {
+  margin: 5px 0 0;
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.tempo-panel p {
+  margin: 9px 0 0;
+  color: #dbe5ec;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stat-grid div {
+  min-height: 68px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.stat-grid strong {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.stat-grid span {
+  display: block;
+  margin-top: 7px;
+  color: #cbd5dd;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.upgrade-list {
+  display: grid;
+  gap: 9px;
+}
+
+.upgrade-list div {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  align-items: center;
+  gap: 10px;
+  color: #dbe5ec;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.upgrade-list i {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 15%);
+}
+
+.upgrade-list i::before {
+  display: block;
+  width: var(--value);
+  height: 100%;
+  border-radius: inherit;
+  background: #ffcf42;
+  content: "";
+}
+
+.garage-hint {
+  min-height: 42px;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
+  z-index: 9;
   display: grid;
   place-items: center;
   padding: 22px;
@@ -304,6 +515,13 @@ button {
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+}
+
+.secondary-action {
+  margin-top: 10px;
+  color: #f8fafc;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 18%);
 }
 
 button:focus-visible {
@@ -368,6 +586,32 @@ button:focus-visible {
     max-width: calc(100vw - 24px);
     font-size: 0.82rem;
     text-align: center;
+  }
+
+  .garage {
+    align-items: start;
+    padding: 14px;
+  }
+
+  .garage-header {
+    display: grid;
+  }
+
+  .garage-layout,
+  .route-select {
+    grid-template-columns: 1fr;
+  }
+
+  .route-option {
+    min-height: 76px;
+  }
+
+  .tempo-panel {
+    padding: 14px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .route-card {

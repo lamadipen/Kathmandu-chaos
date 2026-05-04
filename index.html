@@ -46,6 +46,49 @@
       <div class="screen-flash" id="screenFlash"></div>
       <div class="speed-lines" id="speedLines"></div>
 
+      <section class="garage" id="garage">
+        <div class="garage-shell">
+          <header class="garage-header">
+            <div>
+              <p class="kicker">Tempo garage</p>
+              <h1>Kathmandu Chaos</h1>
+            </div>
+            <div class="garage-save">
+              <span>Unlocked</span>
+              <strong id="garageUnlocked">1/5</strong>
+            </div>
+          </header>
+
+          <section class="garage-layout">
+            <div class="route-select" id="garageRoutes"></div>
+
+            <aside class="tempo-panel">
+              <div>
+                <span class="panel-label">Selected route</span>
+                <h2 id="garageRouteName">Ratna Park Rush</h2>
+                <p id="garageRouteStory"></p>
+              </div>
+
+              <div class="stat-grid">
+                <div><strong id="garagePassengers">4</strong><span>passengers</span></div>
+                <div><strong id="garageTime">82</strong><span>seconds</span></div>
+                <div><strong id="garageBest">0</strong><span>best fare</span></div>
+              </div>
+
+              <div class="upgrade-list">
+                <span class="panel-label">Tempo stats</span>
+                <div><span>Battery</span><i style="--value: 72%"></i></div>
+                <div><span>Brakes</span><i style="--value: 64%"></i></div>
+                <div><span>Handling</span><i style="--value: 68%"></i></div>
+              </div>
+
+              <p class="garage-hint" id="garageHint">Clear routes to unlock harder Kathmandu runs and future vehicle upgrades.</p>
+              <button id="garageStart" type="button">Start route</button>
+            </aside>
+          </section>
+        </div>
+      </section>
+
       <aside class="route-card">
         <div class="route-title" id="routeTitle">Ratna Park Rush</div>
         <div class="objective">Drive through yellow rings to board passengers.</div>
@@ -64,6 +107,7 @@
             Maya has one morning to save her family tempo permit. Pick up passengers, dodge street chaos, and reach the stop before the city eats the clock.
           </p>
           <button id="startButton" type="button">Start route</button>
+          <button class="secondary-action hidden" id="secondaryButton" type="button">Garage</button>
           <div class="keys">
             <span>A / D</span><span>Steer</span>
             <span>W / S</span><span>Speed</span>

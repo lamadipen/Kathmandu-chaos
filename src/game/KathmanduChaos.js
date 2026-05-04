@@ -20,6 +20,7 @@ const obstacleNames = {
   cyclist: 'cyclist',
   police: 'traffic police'
 };
+const progressKey = 'kathmandu-chaos-progress-v1';
 
 export class KathmanduChaos {
   constructor({ canvas, ui }) {
@@ -36,6 +37,8 @@ export class KathmanduChaos {
     this.audio = null;
     this.feedbackTimer = 0;
     this.shake = 0;
+    this.selectedRoute = 0;
+    this.progress = this.loadProgress();
   }
 
   async boot() {
@@ -44,8 +47,100 @@ export class KathmanduChaos {
     this.setupInput();
     this.resize();
     window.addEventListener('resize', () => this.resize());
-    this.loadLevel(0);
+    this.setupGarage();
+    this.loadLevel(0, { showIntro: false });
+    this.showGarage();
     this.animate();
+  }
+
+  loadProgress() {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(progressKey));
+      return {
+        unlocked: clamp(Number(saved?.unlocked ?? 0), 0, LEVELS.length - 1),
+        bestScores: saved?.bestScores ?? {}
+      };
+    } catch {
+      return { unlocked: 0, bestScores: {} };
+    }
+  }
+
+  saveProgress() {
+    window.localStorage.setItem(progressKey, JSON.stringify(this.progress));
+  }
+
+  setupGarage() {
+    this.ui.garageStart?.addEventListener('click', () => this.startSelectedRoute());
+    this.ui.garageRoutes?.addEventListener('click', (event) => {
+      const card = event.target.closest('[data-route-index]');
+      if (!card) return;
+      const index = Number(card.dataset.routeIndex);
+      if (index > this.progress.unlocked) {
+        this.selectRoute(this.progress.unlocked);
+        return;
+      }
+      this.selectRoute(index);
+    });
+  }
+
+  showGarage() {
+    this.running = false;
+    this.pausedByOverlay = true;
+    this.ui.overlay.classList.add('hidden');
+    this.ui.garage.classList.remove('hidden');
+    this.selectRoute(Math.min(this.selectedRoute, this.progress.unlocked));
+    this.renderGarage();
+  }
+
+  hideGarage() {
+    this.ui.garage.classList.add('hidden');
+  }
+
+  selectRoute(index) {
+    this.selectedRoute = clamp(index, 0, this.progress.unlocked);
+    this.renderGarage();
+  }
+
+  startSelectedRoute() {
+    this.startRoute(this.selectedRoute);
+  }
+
+  startRoute(index) {
+    this.selectedRoute = clamp(index, 0, this.progress.unlocked);
+    this.ensureAudio();
+    this.hideGarage();
+    this.loadLevel(this.selectedRoute, { showIntro: false });
+    this.pausedByOverlay = false;
+    this.running = true;
+    this.clock.getDelta();
+  }
+
+  renderGarage() {
+    if (!this.ui.garageRoutes) return;
+    this.ui.garageUnlocked.textContent = `${this.progress.unlocked + 1}/${LEVELS.length}`;
+    this.ui.garageRoutes.innerHTML = LEVELS.map((level, index) => {
+      const locked = index > this.progress.unlocked;
+      const selected = index === this.selectedRoute;
+      const best = this.progress.bestScores[index] ?? 0;
+      return `
+        <button class="route-option${selected ? ' selected' : ''}${locked ? ' locked' : ''}" data-route-index="${index}" type="button">
+          <span>${index + 1}</span>
+          <strong>${level.name}</strong>
+          <small>${locked ? 'Locked' : best ? `Best fare ${best}` : level.district}</small>
+        </button>
+      `;
+    }).join('');
+
+    const level = LEVELS[this.selectedRoute];
+    const best = this.progress.bestScores[this.selectedRoute] ?? 0;
+    this.ui.garageRouteName.textContent = level.name;
+    this.ui.garageRouteStory.textContent = level.story;
+    this.ui.garagePassengers.textContent = level.passengerGoal.toString();
+    this.ui.garageTime.textContent = level.timeLimit.toString();
+    this.ui.garageBest.textContent = best.toString();
+    this.ui.garageHint.textContent = this.selectedRoute === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1
+      ? `Clear this route to unlock ${LEVELS[this.progress.unlocked + 1].name}.`
+      : 'Replay cleared routes to improve your best fare.';
   }
 
   setupRenderer() {
@@ -146,7 +241,8 @@ export class KathmanduChaos {
     }
   }
 
-  loadLevel(index) {
+  loadLevel(index, options = {}) {
+    const { showIntro = true } = options;
     this.levelIndex = index;
     this.level = LEVELS[index];
     this.state = {
@@ -175,7 +271,7 @@ export class KathmanduChaos {
     this.populateRoute();
     this.updateRouteUi();
     this.renderHud();
-    this.showIntro();
+    if (showIntro) this.showIntro();
   }
 
   buildWorld() {
@@ -559,19 +655,36 @@ export class KathmanduChaos {
     if (reachedFinish && this.state.passengers >= this.level.passengerGoal) {
       this.state.finished = true;
       this.state.score += Math.round((this.level.timeLimit - this.state.elapsed) * 10);
+      const finalScore = Math.round(this.state.score);
+      this.progress.bestScores[this.levelIndex] = Math.max(this.progress.bestScores[this.levelIndex] ?? 0, finalScore);
+      if (this.levelIndex === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1) {
+        this.progress.unlocked += 1;
+      }
+      this.saveProgress();
       this.playTone(523, 0.1, 'triangle', 0.18);
       this.playTone(659, 0.1, 'triangle', 0.18, 0.09);
       this.playTone(784, 0.14, 'triangle', 0.18, 0.18);
       if (this.levelIndex < LEVELS.length - 1) {
-        this.showOverlay(`Route cleared. Maya keeps the meter running into ${LEVELS[this.levelIndex + 1].district}.`, 'Next route', () => this.loadLevel(this.levelIndex + 1));
+        this.showOverlay(
+          `Route cleared with ${finalScore} fare. ${LEVELS[this.levelIndex + 1].name} is now open in the garage.`,
+          'Garage',
+          () => this.showGarage(),
+          { label: 'Next route', action: () => this.startRoute(this.levelIndex + 1) }
+        );
       } else {
-        this.showOverlay('Permit saved. Maya becomes the fastest honest tempo driver in the valley.', 'Play again', () => this.loadLevel(0));
+        this.showOverlay('Permit saved. Maya becomes the fastest honest tempo driver in the valley.', 'Garage', () => this.showGarage(), {
+          label: 'Replay first route',
+          action: () => this.startRoute(0)
+        });
       }
     } else if (reachedFinish || outOfTime || busted) {
       this.state.finished = true;
       this.playHitSound('car');
       const reason = busted ? 'The tempo took too many hits.' : outOfTime ? 'The clock ran out in traffic.' : 'You reached the stop without enough passengers.';
-      this.showOverlay(`${reason} Try the route again and keep the fares moving.`, 'Retry route', () => this.loadLevel(this.levelIndex));
+      this.showOverlay(`${reason} Try the route again and keep the fares moving.`, 'Retry route', () => this.startRoute(this.levelIndex), {
+        label: 'Garage',
+        action: () => this.showGarage()
+      });
     }
   }
 
@@ -631,15 +744,27 @@ export class KathmanduChaos {
     });
   }
 
-  showOverlay(text, buttonLabel, action) {
+  showOverlay(text, buttonLabel, action, secondary = null) {
     this.running = false;
     this.pausedByOverlay = true;
+    this.ui.garage?.classList.add('hidden');
     this.ui.overlayText.textContent = text;
     this.ui.startButton.textContent = buttonLabel;
     this.ui.startButton.onclick = () => {
       this.ensureAudio();
       action();
     };
+    if (secondary && this.ui.secondaryButton) {
+      this.ui.secondaryButton.textContent = secondary.label;
+      this.ui.secondaryButton.onclick = () => {
+        this.ensureAudio();
+        secondary.action();
+      };
+      this.ui.secondaryButton.classList.remove('hidden');
+    } else if (this.ui.secondaryButton) {
+      this.ui.secondaryButton.classList.add('hidden');
+      this.ui.secondaryButton.onclick = null;
+    }
     this.ui.overlay.classList.remove('hidden');
   }
 
