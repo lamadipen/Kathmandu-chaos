@@ -61,7 +61,7 @@ On mobile, use the on-screen controls:
 - Pause/settings menu with resume, restart, garage, audio toggle, and reset progress
 - Route minimap with passenger and police markers
 - Upgradeable tempo stats for battery, brakes, and handling
-- Optional GLB/GLTF model-loading pipeline for future character assets
+- Starter GLB character models for passengers and traffic police, with fallback code-generated characters
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
@@ -122,9 +122,9 @@ The garage also includes audio toggle and reset progress controls.
 
 ## External 3D Models
 
-The current game uses code-generated low-poly characters so it runs without asset downloads. To test real characters later, place `.glb` files in `public/models/` and use `src/game/modelLoader.js` to load cached clones with Three.js `GLTFLoader`.
+The current game includes starter Kenney low-poly GLB characters for passengers and traffic police. The code-generated Nepali-themed characters remain as fallbacks so routes stay playable if external assets are disabled or fail to load.
 
-External passenger and police models can be enabled through `public/models/manifest.json`. The game will keep the built-in Nepali-themed low-poly fallback if external models are disabled or fail to load.
+External passenger and police models are configured through `public/models/manifest.json`. To replace them, add new `.glb` files under `public/models/`, include any referenced texture folders, and update the manifest paths and scale values.
 
 ## Extending Levels
 

@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "passengers": [
     "/models/passengers/student.glb",
     "/models/passengers/office-worker.glb",
@@ -7,7 +7,7 @@
   ],
   "police": "/models/police.glb",
   "scale": {
-    "passenger": 0.72,
-    "police": 0.78
+    "passenger": 0.85,
+    "police": 0.85
   }
 }
