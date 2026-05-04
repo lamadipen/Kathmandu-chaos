@@ -31,6 +31,21 @@ const game = new KathmanduChaos({
     restartButton: document.querySelector('#restartButton'),
     garageButton: document.querySelector('#garageButton'),
     pauseAudioToggle: document.querySelector('#pauseAudioToggle'),
+    resultsMenu: document.querySelector('#resultsMenu'),
+    resultsKicker: document.querySelector('#resultsKicker'),
+    resultsTitle: document.querySelector('#resultsTitle'),
+    resultsStars: document.querySelector('#resultsStars'),
+    resultsSummary: document.querySelector('#resultsSummary'),
+    resultsFinalFare: document.querySelector('#resultsFinalFare'),
+    resultsPassengerFare: document.querySelector('#resultsPassengerFare'),
+    resultsTimeBonus: document.querySelector('#resultsTimeBonus'),
+    resultsCleanBonus: document.querySelector('#resultsCleanBonus'),
+    resultsPenalty: document.querySelector('#resultsPenalty'),
+    resultsPassengers: document.querySelector('#resultsPassengers'),
+    resultsBest: document.querySelector('#resultsBest'),
+    resultsPrimary: document.querySelector('#resultsPrimary'),
+    resultsRetry: document.querySelector('#resultsRetry'),
+    resultsGarage: document.querySelector('#resultsGarage'),
     levelName: document.querySelector('#levelName'),
     routeTitle: document.querySelector('#routeTitle'),
     routeStory: document.querySelector('#routeStory'),
@@ -47,10 +62,17 @@ const game = new KathmanduChaos({
     minimap: document.querySelector('#minimap'),
     minimapTrack: document.querySelector('#minimapTrack'),
     minimapPlayer: document.querySelector('#minimapPlayer'),
+    touchControls: document.querySelector('#touchControls'),
+    touchLeft: document.querySelector('#touchLeft'),
+    touchRight: document.querySelector('#touchRight'),
+    touchAccelerate: document.querySelector('#touchAccelerate'),
+    touchBrake: document.querySelector('#touchBrake'),
+    touchPause: document.querySelector('#touchPause'),
     feedback: document.querySelector('#feedback'),
     screenFlash: document.querySelector('#screenFlash'),
     speedLines: document.querySelector('#speedLines')
   }
 });
 
+window.__kathmanduChaos = game;
 game.boot();

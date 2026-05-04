@@ -46,12 +46,19 @@ export class KathmanduChaos {
     this.progress = this.loadProgress();
     this.audioMuted = this.progress.audioMuted;
     this.paused = false;
+    this.touchInput = {
+      left: false,
+      right: false,
+      accelerate: false,
+      brake: false
+    };
   }
 
   async boot() {
     await RAPIER.init();
     this.setupRenderer();
     this.setupInput();
+    this.setupTouchControls();
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.setupGarage();
@@ -91,6 +98,8 @@ export class KathmanduChaos {
     this.ui.resumeButton?.addEventListener('click', () => this.resumeGame());
     this.ui.restartButton?.addEventListener('click', () => this.startRoute(this.levelIndex));
     this.ui.garageButton?.addEventListener('click', () => this.showGarage());
+    this.ui.resultsRetry?.addEventListener('click', () => this.startRoute(this.levelIndex));
+    this.ui.resultsGarage?.addEventListener('click', () => this.showGarage());
     [this.ui.batteryUpgrade, this.ui.brakesUpgrade, this.ui.handlingUpgrade].forEach((button) => {
       button?.addEventListener('click', () => this.buyUpgrade(button.dataset.upgrade));
     });
@@ -112,6 +121,7 @@ export class KathmanduChaos {
     this.paused = false;
     this.ui.overlay.classList.add('hidden');
     this.ui.pauseMenu?.classList.add('hidden');
+    this.ui.resultsMenu?.classList.add('hidden');
     this.ui.garage.classList.remove('hidden');
     this.selectRoute(Math.min(this.selectedRoute, this.progress.unlocked));
     this.renderGarage();
@@ -135,6 +145,7 @@ export class KathmanduChaos {
     this.ensureAudio();
     this.hideGarage();
     this.ui.pauseMenu?.classList.add('hidden');
+    this.ui.resultsMenu?.classList.add('hidden');
     this.loadLevel(this.selectedRoute, { showIntro: false });
     this.pausedByOverlay = false;
     this.paused = false;
@@ -243,6 +254,34 @@ export class KathmanduChaos {
       this.keys.add(event.key.toLowerCase());
     });
     window.addEventListener('keyup', (event) => this.keys.delete(event.key.toLowerCase()));
+  }
+
+  setupTouchControls() {
+    const bindHold = (button, key) => {
+      if (!button) return;
+      const setActive = (active, event) => {
+        event.preventDefault();
+        this.touchInput[key] = active;
+        button.classList.toggle('active', active);
+        if (active) button.setPointerCapture?.(event.pointerId);
+      };
+      button.addEventListener('pointerdown', (event) => setActive(true, event));
+      button.addEventListener('pointerup', (event) => setActive(false, event));
+      button.addEventListener('pointercancel', (event) => setActive(false, event));
+      button.addEventListener('lostpointercapture', () => {
+        this.touchInput[key] = false;
+        button.classList.remove('active');
+      });
+    };
+
+    bindHold(this.ui.touchLeft, 'left');
+    bindHold(this.ui.touchRight, 'right');
+    bindHold(this.ui.touchAccelerate, 'accelerate');
+    bindHold(this.ui.touchBrake, 'brake');
+    this.ui.touchPause?.addEventListener('click', (event) => {
+      event.preventDefault();
+      this.togglePause();
+    });
   }
 
   togglePause() {
@@ -374,6 +413,9 @@ export class KathmanduChaos {
       steer: 0,
       invulnerable: 0,
       pickupAssist: 0,
+      passengerFare: 0,
+      collisionPenalty: 0,
+      collisions: 0,
       finished: false
     };
 
@@ -619,16 +661,17 @@ export class KathmanduChaos {
     const batteryBoost = this.progress.upgrades.battery * 1.7;
     const brakeBoost = this.progress.upgrades.brakes * 3.4;
     const handlingBoost = this.progress.upgrades.handling * 0.7;
-    const accel = this.keys.has('w') || this.keys.has('arrowup') ? 18.5 + batteryBoost : 6.8 + batteryBoost * 0.35;
-    const brake = this.keys.has(' ') || this.keys.has('s') || this.keys.has('arrowdown');
+    const accelerating = this.keys.has('w') || this.keys.has('arrowup') || this.touchInput.accelerate;
+    const brake = this.keys.has(' ') || this.keys.has('s') || this.keys.has('arrowdown') || this.touchInput.brake;
+    const accel = accelerating ? 18.5 + batteryBoost : 6.8 + batteryBoost * 0.35;
     const baseTopSpeed = (this.level.hill ? 30 : 35) + this.progress.upgrades.battery * 2.2;
     const topSpeed = nearbyPickup ? Math.min(baseTopSpeed, 16) : baseTopSpeed;
     this.state.speed += (brake ? -30 - brakeBoost : accel) * delta;
     this.state.speed -= this.state.speed * (this.level.wetRoad ? 0.07 : 0.045) * delta;
     this.state.speed = clamp(this.state.speed, 4, topSpeed);
 
-    const left = this.keys.has('a') || this.keys.has('arrowleft');
-    const right = this.keys.has('d') || this.keys.has('arrowright');
+    const left = this.keys.has('a') || this.keys.has('arrowleft') || this.touchInput.left;
+    const right = this.keys.has('d') || this.keys.has('arrowright') || this.touchInput.right;
     const slide = this.level.wetRoad ? 0.82 : 1;
     this.state.steer += ((right ? 1 : 0) - (left ? 1 : 0)) * (9.6 + handlingBoost) * delta * slide;
     this.state.steer *= this.level.wetRoad ? 0.94 : 0.84;
@@ -752,6 +795,7 @@ export class KathmanduChaos {
         pickup.collected = true;
         pickup.mesh.visible = false;
         this.state.passengers += 1;
+        this.state.passengerFare += pickup.value;
         this.state.score += pickup.value;
         this.state.speed = Math.max(5, this.state.speed * 0.72);
         this.spawnPickupBurst(pickup.mesh.position);
@@ -770,7 +814,10 @@ export class KathmanduChaos {
       if (dx < 1.9 && dz < 2.45) {
         entity.hit = true;
         this.state.hearts -= entity.penalty;
-        this.state.score = Math.max(0, this.state.score - entity.penalty * 90);
+        const penalty = entity.penalty * 90;
+        this.state.collisionPenalty += penalty;
+        this.state.collisions += 1;
+        this.state.score = Math.max(0, this.state.score - penalty);
         this.state.speed = Math.max(5, this.state.speed * 0.45);
         this.state.invulnerable = 1.2;
         this.shake = entity.type === 'police' ? 0.45 : 0.3;
@@ -792,39 +839,98 @@ export class KathmanduChaos {
 
     if (reachedFinish && this.state.passengers >= this.level.passengerGoal) {
       this.state.finished = true;
-      this.state.score += Math.round((this.level.timeLimit - this.state.elapsed) * 10);
-      const finalScore = Math.round(this.state.score);
-      this.progress.bestScores[this.levelIndex] = Math.max(this.progress.bestScores[this.levelIndex] ?? 0, finalScore);
-      this.progress.wallet += finalScore;
-      if (this.levelIndex === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1) {
-        this.progress.unlocked += 1;
-      }
-      this.saveProgress();
+      const result = this.calculateResult(true);
+      this.applySuccessfulResult(result);
       this.playTone(523, 0.1, 'triangle', 0.18);
       this.playTone(659, 0.1, 'triangle', 0.18, 0.09);
       this.playTone(784, 0.14, 'triangle', 0.18, 0.18);
-      if (this.levelIndex < LEVELS.length - 1) {
-        this.showOverlay(
-          `Route cleared with ${finalScore} fare. ${LEVELS[this.levelIndex + 1].name} is now open in the garage.`,
-          'Garage',
-          () => this.showGarage(),
-          { label: 'Next route', action: () => this.startRoute(this.levelIndex + 1) }
-        );
-      } else {
-        this.showOverlay('Permit saved. Maya becomes the fastest honest tempo driver in the valley.', 'Garage', () => this.showGarage(), {
-          label: 'Replay first route',
-          action: () => this.startRoute(0)
-        });
-      }
+      this.showResults(result);
     } else if (reachedFinish || outOfTime || busted) {
       this.state.finished = true;
       this.playHitSound('car');
       const reason = busted ? 'The tempo took too many hits.' : outOfTime ? 'The clock ran out in traffic.' : 'You reached the stop without enough passengers.';
-      this.showOverlay(`${reason} Try the route again and keep the fares moving.`, 'Retry route', () => this.startRoute(this.levelIndex), {
-        label: 'Garage',
-        action: () => this.showGarage()
-      });
+      this.showResults(this.calculateResult(false, reason));
     }
+  }
+
+  calculateResult(completed, failReason = '') {
+    const timeRemaining = Math.max(0, this.level.timeLimit - this.state.elapsed);
+    const timeBonus = completed ? Math.round(timeRemaining * 10) : 0;
+    const cleanBonus = completed && this.state.collisions === 0 ? 220 : completed && this.state.collisions <= 1 ? 90 : 0;
+    const finalFare = Math.max(0, this.state.passengerFare + timeBonus + cleanBonus - this.state.collisionPenalty);
+    const passengerRatio = this.state.passengers / this.level.passengerGoal;
+    let stars = 0;
+    if (completed) {
+      stars = 1;
+      if (passengerRatio >= 1 && this.state.collisions <= 2 && timeRemaining > this.level.timeLimit * 0.12) stars = 2;
+      if (this.state.collisions === 0 && timeRemaining > this.level.timeLimit * 0.25) stars = 3;
+    }
+    const oldBest = this.progress.bestScores[this.levelIndex] ?? 0;
+    return {
+      completed,
+      failReason,
+      routeName: this.level.name,
+      finalFare,
+      passengerFare: this.state.passengerFare,
+      timeBonus,
+      cleanBonus,
+      collisionPenalty: this.state.collisionPenalty,
+      passengers: this.state.passengers,
+      passengerGoal: this.level.passengerGoal,
+      timeRemaining: Math.round(timeRemaining),
+      collisions: this.state.collisions,
+      stars,
+      oldBest,
+      newBest: Math.max(oldBest, finalFare),
+      unlockedNext: completed && this.levelIndex === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1
+    };
+  }
+
+  applySuccessfulResult(result) {
+    this.progress.bestScores[this.levelIndex] = result.newBest;
+    this.progress.wallet += result.finalFare;
+    if (result.unlockedNext) this.progress.unlocked += 1;
+    this.saveProgress();
+  }
+
+  showResults(result) {
+    this.running = false;
+    this.pausedByOverlay = true;
+    this.paused = false;
+    this.ui.overlay?.classList.add('hidden');
+    this.ui.garage?.classList.add('hidden');
+    this.ui.pauseMenu?.classList.add('hidden');
+
+    this.ui.resultsKicker.textContent = result.completed ? 'Route complete' : 'Route failed';
+    this.ui.resultsTitle.textContent = result.routeName;
+    this.ui.resultsStars.textContent = '★★★';
+    this.ui.resultsStars.style.setProperty('--stars', `${result.stars}`);
+    this.ui.resultsSummary.textContent = result.completed
+      ? this.getResultSummary(result)
+      : `${result.failReason} Collect enough passengers and protect the tempo.`;
+    this.ui.resultsFinalFare.textContent = result.finalFare.toString();
+    this.ui.resultsPassengerFare.textContent = result.passengerFare.toString();
+    this.ui.resultsTimeBonus.textContent = result.timeBonus.toString();
+    this.ui.resultsCleanBonus.textContent = result.cleanBonus.toString();
+    this.ui.resultsPenalty.textContent = result.collisionPenalty ? `-${result.collisionPenalty}` : '0';
+    this.ui.resultsPassengers.textContent = `${result.passengers}/${result.passengerGoal}`;
+    this.ui.resultsBest.textContent = result.newBest.toString();
+    this.ui.resultsBest.classList.toggle('new-best', result.finalFare > result.oldBest);
+
+    if (result.completed && this.levelIndex < LEVELS.length - 1) {
+      this.ui.resultsPrimary.textContent = result.unlockedNext ? 'Next route' : 'Continue';
+      this.ui.resultsPrimary.onclick = () => this.startRoute(this.levelIndex + 1);
+    } else {
+      this.ui.resultsPrimary.textContent = 'Garage';
+      this.ui.resultsPrimary.onclick = () => this.showGarage();
+    }
+    this.ui.resultsMenu.classList.remove('hidden');
+  }
+
+  getResultSummary(result) {
+    if (result.stars === 3) return `Perfect tempo work. ${result.timeRemaining}s left, no collisions, and a clean fare bank run.`;
+    if (result.stars === 2) return `Good route. ${result.timeRemaining}s left with ${result.collisions} collision${result.collisions === 1 ? '' : 's'}.`;
+    return `Route cleared. Upgrade the tempo or replay for a cleaner, faster fare.`;
   }
 
   updateCamera(delta) {

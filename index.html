@@ -54,6 +54,18 @@
       <div class="screen-flash" id="screenFlash"></div>
       <div class="speed-lines" id="speedLines"></div>
 
+      <section class="touch-controls" id="touchControls" aria-label="Touch driving controls">
+        <div class="touch-steer">
+          <button class="touch-button" data-touch="left" id="touchLeft" type="button" aria-label="Steer left">‹</button>
+          <button class="touch-button" data-touch="right" id="touchRight" type="button" aria-label="Steer right">›</button>
+        </div>
+        <button class="touch-button touch-pause" data-touch="pause" id="touchPause" type="button" aria-label="Pause">Ⅱ</button>
+        <div class="touch-pedals">
+          <button class="touch-button brake" data-touch="brake" id="touchBrake" type="button" aria-label="Brake">Brake</button>
+          <button class="touch-button go" data-touch="accelerate" id="touchAccelerate" type="button" aria-label="Accelerate">Go</button>
+        </div>
+      </section>
+
       <section class="garage" id="garage">
         <div class="garage-shell">
           <header class="garage-header">
@@ -148,6 +160,35 @@
             <span>A / D</span><span>Steer</span>
             <span>W / S</span><span>Speed</span>
             <span>Space</span><span>Brake</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="results-menu hidden" id="resultsMenu">
+        <div class="results-panel">
+          <p class="kicker" id="resultsKicker">Route complete</p>
+          <h1 id="resultsTitle">Ratna Park Rush</h1>
+          <div class="stars" id="resultsStars" aria-label="Route rating">★★★</div>
+          <p id="resultsSummary">Maya kept the meter running.</p>
+
+          <div class="results-total">
+            <span>Final fare</span>
+            <strong id="resultsFinalFare">0</strong>
+          </div>
+
+          <div class="results-grid">
+            <div><span>Passenger fare</span><strong id="resultsPassengerFare">0</strong></div>
+            <div><span>Time bonus</span><strong id="resultsTimeBonus">0</strong></div>
+            <div><span>Clean bonus</span><strong id="resultsCleanBonus">0</strong></div>
+            <div><span>Collision penalty</span><strong id="resultsPenalty">0</strong></div>
+            <div><span>Passengers</span><strong id="resultsPassengers">0/0</strong></div>
+            <div><span>Best fare</span><strong id="resultsBest">0</strong></div>
+          </div>
+
+          <div class="results-actions">
+            <button id="resultsPrimary" type="button">Garage</button>
+            <button class="secondary-action" id="resultsRetry" type="button">Retry</button>
+            <button class="secondary-action" id="resultsGarage" type="button">Garage</button>
           </div>
         </div>
       </section>

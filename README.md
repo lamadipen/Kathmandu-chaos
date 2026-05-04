@@ -32,6 +32,15 @@ Open the local URL Vite prints in your terminal.
 | `D` or `ArrowRight` | Steer right |
 | `Space` | Brake |
 
+On mobile, use the on-screen controls:
+
+| Touch Control | Action |
+| --- | --- |
+| `‹` / `›` | Steer |
+| `Go` | Accelerate |
+| `Brake` | Brake |
+| `Ⅱ` | Pause |
+
 ## Current Features
 
 - Five playable route levels
@@ -51,6 +60,8 @@ Open the local URL Vite prints in your terminal.
 - Route minimap with passenger and police markers
 - Upgradeable tempo stats for battery, brakes, and handling
 - Optional GLB/GLTF model-loading pipeline for future character assets
+- Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
+- Mobile touch controls for steering, acceleration, braking, and pause
 
 ## Project Structure
 
@@ -77,6 +88,20 @@ The garage screen tracks progression in browser `localStorage`.
 - Replaying a cleared route can improve its best fare.
 - Cleared-route fare is added to the garage fare bank.
 - Fare bank can buy Battery, Brakes, and Handling upgrades.
+
+## Route Results
+
+Every completed or failed route ends on a results screen.
+
+Scoring includes:
+
+- Passenger fare
+- Time bonus
+- Clean driving bonus
+- Collision penalty
+- Final fare
+- Best fare comparison
+- 1-3 star route rating
 
 ## Pause And Settings
 

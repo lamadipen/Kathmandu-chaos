@@ -316,6 +316,84 @@ body {
   pointer-events: none;
 }
 
+.touch-controls {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 6;
+  display: none;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px 16px;
+  pointer-events: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.touch-steer,
+.touch-pedals {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.touch-pedals {
+  align-items: end;
+}
+
+.touch-button {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  min-height: 62px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 50%;
+  color: #f8fafc;
+  background: rgb(10 15 18 / 70%);
+  box-shadow: 0 16px 34px rgb(0 0 0 / 28%);
+  font-size: 1.75rem;
+  backdrop-filter: blur(16px);
+  touch-action: none;
+}
+
+.touch-button.go {
+  width: 76px;
+  height: 76px;
+  min-height: 76px;
+  color: #111814;
+  background: #ffcf42;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.touch-button.brake {
+  width: 68px;
+  height: 68px;
+  min-height: 68px;
+  color: #ffffff;
+  background: rgb(217 72 72 / 82%);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.touch-pause {
+  position: absolute;
+  right: 14px;
+  bottom: 106px;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  font-size: 1.05rem;
+  pointer-events: auto;
+}
+
+.touch-button.active {
+  transform: translateY(2px) scale(0.96);
+  filter: brightness(1.18);
+}
+
 .garage {
   position: fixed;
   inset: 0;
@@ -565,14 +643,34 @@ button:disabled {
   background: linear-gradient(180deg, rgb(12 16 20 / 28%), rgb(12 16 20 / 82%));
 }
 
+.results-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  overflow: auto;
+  background: linear-gradient(180deg, rgb(12 16 20 / 36%), rgb(12 16 20 / 88%));
+}
+
 .overlay.hidden {
   display: none;
 }
 
-.panel {
+.panel,
+.results-panel {
   width: min(520px, 100%);
   border-radius: 8px;
   padding: 28px;
+}
+
+.results-panel {
+  width: min(720px, 100%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  background: rgb(10 15 18 / 78%);
+  box-shadow: 0 16px 42px rgb(0 0 0 / 24%);
+  backdrop-filter: blur(16px);
 }
 
 .kicker {
@@ -595,6 +693,100 @@ h1 {
   color: #e5edf2;
   font-size: 1rem;
   line-height: 1.58;
+}
+
+.stars {
+  position: relative;
+  display: inline-block;
+  margin-top: 12px;
+  color: rgb(255 255 255 / 18%);
+  font-size: 2rem;
+  letter-spacing: 0;
+}
+
+.stars::before {
+  position: absolute;
+  inset: 0;
+  width: calc((var(--stars, 0) / 3) * 100%);
+  overflow: hidden;
+  color: #ffcf42;
+  content: "★★★";
+  white-space: nowrap;
+}
+
+.results-panel > p:not(.kicker) {
+  margin: 12px 0 18px;
+  color: #e5edf2;
+  line-height: 1.55;
+}
+
+.results-total {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 8px;
+  color: #111814;
+  background: #ffcf42;
+}
+
+.results-total span {
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.results-total strong {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.results-grid div {
+  min-height: 72px;
+  padding: 11px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.results-grid span {
+  display: block;
+  color: #cbd5dd;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.results-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.results-grid .new-best::after {
+  margin-left: 7px;
+  color: #7bed9f;
+  font-size: 0.68rem;
+  content: "NEW";
+}
+
+.results-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.results-actions .secondary-action {
+  margin-top: 0;
 }
 
 button {
@@ -682,9 +874,17 @@ button:focus-visible {
 
   .minimap {
     right: 12px;
-    bottom: 88px;
+    bottom: 104px;
     left: 12px;
     grid-template-columns: auto 1fr auto;
+  }
+
+  .touch-controls {
+    display: flex;
+  }
+
+  .route-card {
+    bottom: 166px;
   }
 
   .garage {
@@ -718,9 +918,13 @@ button:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .results-grid,
+  .results-actions {
+    grid-template-columns: 1fr;
+  }
+
   .route-card {
     left: 12px;
-    bottom: 12px;
     width: calc(100vw - 24px);
     padding: 12px;
   }
