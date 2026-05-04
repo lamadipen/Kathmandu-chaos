@@ -1,0 +1,13 @@
+{
+  "enabled": false,
+  "passengers": [
+    "/models/passengers/student.glb",
+    "/models/passengers/office-worker.glb",
+    "/models/passengers/elder.glb"
+  ],
+  "police": "/models/police.glb",
+  "scale": {
+    "passenger": 0.72,
+    "police": 0.78
+  }
+}

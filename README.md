@@ -124,6 +124,8 @@ The garage also includes audio toggle and reset progress controls.
 
 The current game uses code-generated low-poly characters so it runs without asset downloads. To test real characters later, place `.glb` files in `public/models/` and use `src/game/modelLoader.js` to load cached clones with Three.js `GLTFLoader`.
 
+External passenger and police models can be enabled through `public/models/manifest.json`. The game will keep the built-in Nepali-themed low-poly fallback if external models are disabled or fail to load.
+
 ## Extending Levels
 
 Levels live in `src/game/levels.js`. Add a new object to `LEVELS` with route name, story, length, time limit, passenger goal, obstacle counts, route theme, signs, and palette.

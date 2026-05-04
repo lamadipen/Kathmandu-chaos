@@ -10,6 +10,7 @@ import {
   createStreetStall,
   createTempo
 } from './visuals.js';
+import { modelLibrary } from './modelLoader.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const rand = (min, max) => min + Math.random() * (max - min);
@@ -55,10 +56,12 @@ export class KathmanduChaos {
       accelerate: false,
       brake: false
     };
+    this.modelManifest = { enabled: false, passengers: [], police: '' };
   }
 
   async boot() {
     await RAPIER.init();
+    await this.loadModelManifest();
     this.setupRenderer();
     this.setupInput();
     this.setupTouchControls();
@@ -68,6 +71,22 @@ export class KathmanduChaos {
     this.loadLevel(0, { showIntro: false });
     this.showGarage();
     this.animate();
+  }
+
+  async loadModelManifest() {
+    try {
+      const response = await fetch('/models/manifest.json', { cache: 'no-store' });
+      if (!response.ok) return;
+      const manifest = await response.json();
+      this.modelManifest = {
+        enabled: Boolean(manifest.enabled),
+        passengers: Array.isArray(manifest.passengers) ? manifest.passengers.filter(Boolean) : [],
+        police: manifest.police || '',
+        scale: manifest.scale ?? {}
+      };
+    } catch {
+      this.modelManifest = { enabled: false, passengers: [], police: '' };
+    }
   }
 
   loadProgress() {
@@ -715,7 +734,28 @@ export class KathmanduChaos {
     const group = createPassengerMesh(index);
     group.position.set(x, 0, z);
     this.scene.add(group);
+    this.attachPassengerModel(group, index);
     return group;
+  }
+
+  async attachPassengerModel(group, index) {
+    if (!this.modelManifest.enabled || this.modelManifest.passengers.length === 0) return;
+    const path = this.modelManifest.passengers[index % this.modelManifest.passengers.length];
+    try {
+      const model = await modelLibrary.cloneScene(path);
+      if (!group.parent || group.visible === false) return;
+      model.name = 'externalPassengerModel';
+      model.scale.setScalar(this.modelManifest.scale?.passenger ?? 0.72);
+      model.position.set(0, 0, 0);
+      group.children
+        .filter((child) => child.name !== 'pickupMarker')
+        .forEach((child) => {
+          child.visible = false;
+        });
+      group.add(model);
+    } catch (error) {
+      console.warn(`Could not load passenger model: ${path}`, error);
+    }
   }
 
   addObstacles(type, count) {
@@ -749,7 +789,26 @@ export class KathmanduChaos {
   }
 
   createObstacleMesh(type) {
-    return createObstacle(type);
+    const mesh = createObstacle(type);
+    if (type === 'police') this.attachPoliceModel(mesh);
+    return mesh;
+  }
+
+  async attachPoliceModel(group) {
+    if (!this.modelManifest.enabled || !this.modelManifest.police) return;
+    try {
+      const model = await modelLibrary.cloneScene(this.modelManifest.police);
+      if (!group.parent) return;
+      model.name = 'externalPoliceModel';
+      model.scale.setScalar(this.modelManifest.scale?.police ?? 0.78);
+      model.position.set(0, -0.55, 0);
+      group.children.forEach((child) => {
+        child.visible = false;
+      });
+      group.add(model);
+    } catch (error) {
+      console.warn(`Could not load police model: ${this.modelManifest.police}`, error);
+    }
   }
 
   addFinishGate() {
