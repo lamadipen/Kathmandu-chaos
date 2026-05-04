@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kathmandu Chaos</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="game"></canvas>
+
+      <section class="hud" aria-live="polite">
+        <div class="brand">
+          <span>Kathmandu Chaos</span>
+          <small id="levelName">Loading route...</small>
+        </div>
+        <div class="meters">
+          <div>
+            <strong id="score">0</strong>
+            <span>fare</span>
+          </div>
+          <div>
+            <strong id="passengers">0/0</strong>
+            <span>passengers</span>
+          </div>
+          <div>
+            <strong id="time">0</strong>
+            <span>sec</span>
+          </div>
+          <div>
+            <strong id="hearts">3</strong>
+            <span>chances</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="route-card">
+        <div class="route-title" id="routeTitle">Ratna Park Rush</div>
+        <p id="routeStory"></p>
+        <div class="route-progress">
+          <span id="levelIndex">1/5</span>
+          <div><i id="progressBar"></i></div>
+        </div>
+      </aside>
+
+      <section class="overlay" id="overlay">
+        <div class="panel">
+          <p class="kicker">Tempo mission</p>
+          <h1>Kathmandu Chaos</h1>
+          <p id="overlayText">
+            Maya has one morning to save her family tempo permit. Pick up passengers, dodge street chaos, and reach the stop before the city eats the clock.
+          </p>
+          <button id="startButton" type="button">Start route</button>
+          <div class="keys">
+            <span>A / D</span><span>Steer</span>
+            <span>W / S</span><span>Speed</span>
+            <span>Space</span><span>Brake</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

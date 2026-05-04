@@ -1,0 +1,96 @@
+export const LEVELS = [
+  {
+    name: 'Ratna Park Rush',
+    district: 'Ratna Park to Asan',
+    story: 'Maya starts with the morning office crowd. The alleys are tight, the fares are impatient, and every second matters.',
+    length: 720,
+    timeLimit: 82,
+    passengerGoal: 4,
+    traffic: 18,
+    cows: 3,
+    cyclists: 6,
+    police: 2,
+    palette: {
+      sky: 0xbfe7ff,
+      fog: 0xd9f0ff,
+      road: 0x30363a,
+      accent: 0xf2c94c
+    }
+  },
+  {
+    name: 'Boudha Bell Run',
+    district: 'Chabahil to Boudha',
+    story: 'Temple bells roll through the traffic while tourists wave for rides. Smooth driving earns bigger tips.',
+    length: 820,
+    timeLimit: 90,
+    passengerGoal: 5,
+    traffic: 22,
+    cows: 4,
+    cyclists: 8,
+    police: 3,
+    palette: {
+      sky: 0xcdeedc,
+      fog: 0xe5f6e9,
+      road: 0x343737,
+      accent: 0xd94f30
+    }
+  },
+  {
+    name: 'Patan Shortcut',
+    district: 'Kupondole to Patan Durbar',
+    story: 'A rival driver blocks the main road, so Maya dives into brick-lined shortcuts and keeps the route alive.',
+    length: 940,
+    timeLimit: 98,
+    passengerGoal: 6,
+    traffic: 28,
+    cows: 5,
+    cyclists: 10,
+    police: 3,
+    palette: {
+      sky: 0xffe4bf,
+      fog: 0xffefd5,
+      road: 0x383332,
+      accent: 0x8f3f2d
+    }
+  },
+  {
+    name: 'Ring Road Monsoon',
+    district: 'Kalanki to Balaju',
+    story: 'Rain has turned potholes into small ponds. The tempo slides harder, but the bus stop is packed.',
+    length: 1040,
+    timeLimit: 106,
+    passengerGoal: 7,
+    traffic: 34,
+    cows: 6,
+    cyclists: 12,
+    police: 4,
+    wetRoad: true,
+    palette: {
+      sky: 0x9eb7c7,
+      fog: 0xcad7df,
+      road: 0x252b2f,
+      accent: 0x31a3d6
+    }
+  },
+  {
+    name: 'Swayambhu Climb',
+    district: 'Thamel to Swayambhu',
+    story: 'The permit inspector is waiting uphill. One last climb decides whether Maya keeps the tempo on the road.',
+    length: 1180,
+    timeLimit: 118,
+    passengerGoal: 8,
+    traffic: 40,
+    cows: 7,
+    cyclists: 14,
+    police: 5,
+    hill: true,
+    palette: {
+      sky: 0xd7d0ff,
+      fog: 0xe7e4ff,
+      road: 0x292d35,
+      accent: 0x62b15f
+    }
+  }
+];
+
+export const LANES = [-5.4, -2.7, 0, 2.7, 5.4];
