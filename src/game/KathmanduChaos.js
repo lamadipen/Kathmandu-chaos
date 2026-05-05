@@ -5,6 +5,8 @@ import {
   createLandmark,
   createObstacle,
   createPassenger as createPassengerMesh,
+  createPassengerAccessories,
+  createPoliceAccessories,
   createPrayerFlags,
   createShopSign,
   createStreetStall,
@@ -753,6 +755,7 @@ export class KathmanduChaos {
           child.visible = false;
         });
       group.add(model);
+      group.add(createPassengerAccessories(index));
     } catch (error) {
       console.warn(`Could not load passenger model: ${path}`, error);
     }
@@ -806,6 +809,7 @@ export class KathmanduChaos {
         child.visible = false;
       });
       group.add(model);
+      group.add(createPoliceAccessories());
     } catch (error) {
       console.warn(`Could not load police model: ${this.modelManifest.police}`, error);
     }

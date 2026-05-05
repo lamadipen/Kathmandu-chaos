@@ -208,6 +208,82 @@ function createTrafficPolice() {
   return markShadows(group);
 }
 
+function addDhakaTopi(group, y = 1.58, baseColor = 0x243b8f) {
+  const topi = new THREE.Group();
+  topi.name = 'dhakaTopi';
+  topi.add(mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.2, 6), mat(baseColor, { roughness: 0.82 }), [0, 0, 0], [0, Math.PI / 6, 0]));
+  topi.add(mesh(new THREE.BoxGeometry(0.46, 0.035, 0.035), mat(0xd94848), [0, 0.055, -0.19], [0, 0.18, 0]));
+  topi.add(mesh(new THREE.BoxGeometry(0.38, 0.035, 0.035), mat(0xffcf42), [0, -0.035, 0.19], [0, -0.18, 0]));
+  topi.add(mesh(new THREE.BoxGeometry(0.035, 0.035, 0.38), mat(0xf8f1dc), [-0.19, 0.02, 0], [0, 0.32, 0]));
+  topi.position.set(0, y, 0);
+  group.add(topi);
+}
+
+function addSchoolBag(group, color = 0x2b6cb0) {
+  const bag = new THREE.Group();
+  bag.name = 'schoolBag';
+  bag.add(mesh(new THREE.BoxGeometry(0.44, 0.56, 0.2), mat(color, { roughness: 0.72 }), [0, 0.82, 0.25]));
+  bag.add(mesh(new THREE.BoxGeometry(0.36, 0.1, 0.04), mat(0xffcf42), [0, 1.02, 0.37]));
+  bag.add(mesh(new THREE.BoxGeometry(0.09, 0.58, 0.04), mat(0x202124), [-0.26, 0.82, 0.17], [0, 0, -0.1]));
+  bag.add(mesh(new THREE.BoxGeometry(0.09, 0.58, 0.04), mat(0x202124), [0.26, 0.82, 0.17], [0, 0, 0.1]));
+  group.add(bag);
+}
+
+function addShawl(group, color = 0xd94848) {
+  const shawl = new THREE.Group();
+  shawl.name = 'wovenShawl';
+  shawl.add(mesh(new THREE.BoxGeometry(0.12, 0.72, 0.08), mat(color, { roughness: 0.86 }), [-0.17, 0.97, -0.28], [0, 0, -0.46]));
+  shawl.add(mesh(new THREE.BoxGeometry(0.12, 0.44, 0.08), mat(0xf8f1dc, { roughness: 0.86 }), [0.2, 0.74, -0.29], [0, 0, -0.46]));
+  shawl.add(mesh(new THREE.BoxGeometry(0.36, 0.045, 0.09), mat(0xffcf42), [0.04, 1.1, -0.31], [0, 0, -0.46]));
+  group.add(shawl);
+}
+
+function addPoliceVest(group) {
+  const vest = new THREE.Group();
+  vest.name = 'trafficPoliceVest';
+  const neon = mat(0xd9f99d, { roughness: 0.48, emissive: 0x516500, emissiveIntensity: 0.14 });
+  vest.add(mesh(new THREE.BoxGeometry(0.58, 0.58, 0.055), neon, [0, 0.9, -0.28]));
+  vest.add(mesh(new THREE.BoxGeometry(0.09, 0.62, 0.065), mat(0xffcf42), [-0.16, 0.9, -0.32]));
+  vest.add(mesh(new THREE.BoxGeometry(0.09, 0.62, 0.065), mat(0xffcf42), [0.16, 0.9, -0.32]));
+  vest.add(mesh(new THREE.BoxGeometry(0.64, 0.055, 0.065), mat(0xffffff), [0, 0.96, -0.33]));
+  group.add(vest);
+}
+
+function addPoliceBaton(group) {
+  const baton = new THREE.Group();
+  baton.name = 'trafficBaton';
+  baton.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.84, 10), mat(0xd94848), [0.55, 0.72, -0.12], [0, 0, -0.56]));
+  baton.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.32, 10), mat(0xffffff), [0.74, 1.05, -0.12], [0, 0, -0.56]));
+  group.add(baton);
+}
+
+export function createPassengerAccessories(index = 0) {
+  const group = new THREE.Group();
+  group.name = 'nepaliPassengerAccessories';
+
+  if (index % 3 === 0) {
+    addDhakaTopi(group, 1.58, 0x243b8f);
+    addSchoolBag(group, 0x2b6cb0);
+  } else if (index % 3 === 1) {
+    addShawl(group, 0xd94848);
+    addDhakaTopi(group, 1.58, 0x8f3f2d);
+  } else {
+    addShawl(group, 0x2f9e44);
+    addSchoolBag(group, 0x8f3f2d);
+  }
+
+  return markShadows(group);
+}
+
+export function createPoliceAccessories() {
+  const group = new THREE.Group();
+  group.name = 'nepaliPoliceAccessories';
+  addPoliceVest(group);
+  addDhakaTopi(group, 1.58, 0xffffff);
+  addPoliceBaton(group);
+  return markShadows(group);
+}
+
 function createTrafficVehicle() {
   const group = new THREE.Group();
   const body = mat(pick(vehicleColors), { roughness: 0.48 });
