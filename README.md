@@ -78,6 +78,7 @@ On mobile, use the on-screen controls:
 - Traffic variety with cars, buses, taxis, and scooters
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
+- Route-specific ambient sounds for rain, market texture, temple bells, and police whistles
 
 ## Project Structure
 

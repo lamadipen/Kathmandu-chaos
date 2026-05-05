@@ -72,7 +72,9 @@ export class KathmanduChaos {
     this.audioMuted = this.progress.audioMuted;
     this.audioVolume = this.progress.audioVolume;
     this.nextMusicTime = 0;
+    this.nextAmbientTime = 0;
     this.musicStep = 0;
+    this.ambientStep = 0;
     this.paused = false;
     this.routeIntro = { active: false, age: 0, duration: 3.2 };
     this.touchInput = {
@@ -218,6 +220,8 @@ export class KathmanduChaos {
     this.running = true;
     this.startRouteIntro();
     if (this.audio) this.nextMusicTime = this.audio.ctx.currentTime + 0.1;
+    if (this.audio) this.nextAmbientTime = this.audio.ctx.currentTime + 0.25;
+    this.playRouteStartSound();
     this.clock.getDelta();
   }
 
@@ -369,6 +373,7 @@ export class KathmanduChaos {
 
   setupInput() {
     window.addEventListener('keydown', (event) => {
+      this.resumeAudioContext();
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'a', 'd', 'w', 's'].includes(event.key)) {
         event.preventDefault();
       }
@@ -393,6 +398,7 @@ export class KathmanduChaos {
       if (!button) return;
       const setActive = (active, event) => {
         event.preventDefault();
+        if (active) this.ensureAudio();
         this.touchInput[key] = active;
         button.classList.toggle('active', active);
         if (active) button.setPointerCapture?.(event.pointerId);
@@ -458,7 +464,7 @@ export class KathmanduChaos {
 
   ensureAudio() {
     if (this.audio) {
-      this.audio.ctx.resume?.();
+      this.resumeAudioContext();
       return;
     }
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -467,22 +473,36 @@ export class KathmanduChaos {
     const master = ctx.createGain();
     const sfx = ctx.createGain();
     const ambience = ctx.createGain();
+    const routeFx = ctx.createGain();
+    const rain = ctx.createGain();
     const music = ctx.createGain();
     const motor = ctx.createGain();
     master.gain.value = this.audioMuted ? 0 : this.audioVolume;
     sfx.gain.value = 0.24;
     ambience.gain.value = 0.16;
+    routeFx.gain.value = 0.24;
+    rain.gain.value = 0;
     music.gain.value = 0;
     motor.gain.value = 0;
     sfx.connect(master);
     ambience.connect(master);
+    routeFx.connect(master);
+    rain.connect(master);
     music.connect(master);
     motor.connect(master);
     master.connect(ctx.destination);
-    this.audio = { ctx, master, sfx, ambience, music, motor };
+    this.audio = { ctx, master, sfx, ambience, routeFx, rain, music, motor };
     this.startAmbience();
+    this.startRainLoop();
     this.startMotor();
     this.nextMusicTime = ctx.currentTime + 0.12;
+    this.nextAmbientTime = ctx.currentTime + 0.25;
+    this.resumeAudioContext();
+  }
+
+  resumeAudioContext() {
+    const resume = this.audio?.ctx.resume?.();
+    if (resume?.catch) resume.catch(() => {});
   }
 
   toggleAudio() {
@@ -527,7 +547,7 @@ export class KathmanduChaos {
     osc.stop(start + duration + 0.04);
   }
 
-  playNoise(duration = 0.18, gain = 0.16) {
+  playNoise(duration = 0.18, gain = 0.16, destination = null, frequency = 260) {
     if (!this.audio) return;
     const { ctx } = this.audio;
     const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
@@ -537,13 +557,13 @@ export class KathmanduChaos {
     const filter = ctx.createBiquadFilter();
     const amp = ctx.createGain();
     filter.type = 'lowpass';
-    filter.frequency.value = 260;
+    filter.frequency.value = frequency;
     amp.gain.setValueAtTime(gain, ctx.currentTime);
     amp.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
     source.buffer = buffer;
     source.connect(filter);
     filter.connect(amp);
-    amp.connect(this.audio.sfx);
+    amp.connect(destination ?? this.audio.sfx);
     source.start();
   }
 
@@ -574,6 +594,29 @@ export class KathmanduChaos {
     this.audio.ambienceSource = source;
   }
 
+  startRainLoop() {
+    if (!this.audio || this.audio.rainSource) return;
+    const { ctx, rain } = this.audio;
+    const duration = 1.5;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * 0.7;
+    const source = ctx.createBufferSource();
+    const highpass = ctx.createBiquadFilter();
+    const lowpass = ctx.createBiquadFilter();
+    source.buffer = buffer;
+    source.loop = true;
+    highpass.type = 'highpass';
+    highpass.frequency.value = 900;
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 5200;
+    source.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(rain);
+    source.start();
+    this.audio.rainSource = source;
+  }
+
   startMotor() {
     if (!this.audio || this.audio.motorOsc) return;
     const { ctx, motor } = this.audio;
@@ -592,14 +635,18 @@ export class KathmanduChaos {
 
   updateAudio(delta) {
     if (!this.audio) return;
-    const { ctx, motor, music, motorOsc, motorFilter } = this.audio;
+    const { ctx, motor, music, rain, motorOsc, motorFilter } = this.audio;
     const active = this.running && !this.pausedByOverlay;
     const motorGain = active ? clamp(0.025 + this.state.speed / 900, 0.02, 0.075) : 0;
     motor.gain.setTargetAtTime(motorGain, ctx.currentTime, 0.08);
     music.gain.setTargetAtTime(active ? 0.07 : 0, ctx.currentTime, 0.25);
+    rain.gain.setTargetAtTime(active && this.level.wetRoad ? 0.18 : 0, ctx.currentTime, 0.45);
     if (motorOsc) motorOsc.frequency.setTargetAtTime(62 + this.state.speed * 6.5, ctx.currentTime, 0.06);
     if (motorFilter) motorFilter.frequency.setTargetAtTime(190 + this.state.speed * 13, ctx.currentTime, 0.08);
-    if (active) this.scheduleMusic(delta);
+    if (active) {
+      this.scheduleMusic(delta);
+      this.scheduleRouteAmbience();
+    }
   }
 
   scheduleMusic() {
@@ -613,6 +660,66 @@ export class KathmanduChaos {
       if (this.musicStep % 4 === 0) this.playTone(note / 2, 0.22, 'sine', 0.045, this.nextMusicTime - ctx.currentTime, music);
       this.musicStep += 1;
       this.nextMusicTime += 0.32;
+    }
+  }
+
+  scheduleRouteAmbience() {
+    if (!this.audio) return;
+    const { ctx, routeFx } = this.audio;
+
+    while (this.nextAmbientTime < ctx.currentTime + 0.6) {
+      const theme = this.level.theme;
+      const step = this.ambientStep;
+      const when = this.nextAmbientTime - ctx.currentTime;
+
+      if (this.level.wetRoad && step % 2 === 0) {
+        this.playNoise(0.12, 0.08, routeFx, 2200);
+      }
+
+      if ((theme === 'stupa' || theme === 'swayambhu') && step % 2 === 0) {
+        this.playTone(784, 0.5, 'sine', 0.075, when, routeFx);
+        this.playTone(1174.66, 0.42, 'sine', 0.045, when + 0.04, routeFx);
+      } else if (theme === 'durbar' && step % 3 === 0) {
+        this.playTone(659.25, 0.34, 'triangle', 0.06, when, routeFx);
+        this.playTone(987.77, 0.18, 'triangle', 0.035, when + 0.1, routeFx);
+      } else if (theme === 'market' || theme === 'durbar') {
+        this.playNoise(0.2, 0.075, routeFx, 820);
+        this.playTone(196 + (step % 3) * 28, 0.11, 'triangle', 0.035, when + 0.02, routeFx);
+      } else if (theme === 'monsoon') {
+        this.playNoise(0.24, 0.06, routeFx, 520);
+        if (step % 3 === 0) this.playTone(110, 0.5, 'sawtooth', 0.035, when, routeFx);
+      }
+
+      if (this.level.police > 0 && step % 4 === 2) {
+        this.playTone(1500, 0.12, 'square', 0.08, when, routeFx);
+        this.playTone(1900, 0.12, 'square', 0.06, when + 0.13, routeFx);
+      }
+
+      this.ambientStep += 1;
+      this.nextAmbientTime += rand(0.85, 1.7);
+    }
+  }
+
+  playRouteStartSound() {
+    if (!this.audio || this.audioMuted) return;
+    this.resumeAudioContext();
+    const { routeFx } = this.audio;
+    this.playTone(523.25, 0.08, 'triangle', 0.12, 0.02);
+    this.playTone(659.25, 0.1, 'triangle', 0.1, 0.11);
+    this.playTone(783.99, 0.12, 'triangle', 0.08, 0.2);
+
+    if (this.level.theme === 'market') {
+      this.playNoise(0.28, 0.09, routeFx, 850);
+      this.playTone(220, 0.12, 'triangle', 0.045, 0.28, routeFx);
+    } else if (this.level.theme === 'stupa' || this.level.theme === 'swayambhu') {
+      this.playTone(784, 0.6, 'sine', 0.09, 0.26, routeFx);
+      this.playTone(1174.66, 0.48, 'sine', 0.055, 0.34, routeFx);
+    } else if (this.level.theme === 'durbar') {
+      this.playTone(659.25, 0.35, 'triangle', 0.075, 0.26, routeFx);
+      this.playTone(987.77, 0.22, 'triangle', 0.045, 0.4, routeFx);
+    } else if (this.level.theme === 'monsoon') {
+      this.playNoise(0.3, 0.12, routeFx, 2400);
+      this.playTone(110, 0.6, 'sawtooth', 0.045, 0.28, routeFx);
     }
   }
 
@@ -680,6 +787,8 @@ export class KathmanduChaos {
     this.shake = 0;
     this.feedbackTimer = 0;
     this.passengerBarkTimer = 0;
+    this.nextAmbientTime = this.audio ? this.audio.ctx.currentTime + 0.25 : 0;
+    this.ambientStep = 0;
     this.routeIntro = { active: false, age: 0, duration: 3.2 };
     this.ui.routeCountdown?.classList.add('hidden');
 
