@@ -76,6 +76,7 @@ export class KathmanduChaos {
     this.nextAmbientTime = 0;
     this.musicStep = 0;
     this.ambientStep = 0;
+    this.hornPulse = 0;
     this.paused = false;
     this.routeIntro = { active: false, age: 0, duration: 3.2 };
     this.touchInput = {
@@ -764,10 +765,26 @@ export class KathmanduChaos {
   }
 
   playHorn() {
-    if (!this.audio) return;
-    this.playTone(392, 0.18, 'square', 0.18);
-    this.playTone(466.16, 0.2, 'square', 0.16, 0.04);
+    if (this.audio) {
+      this.playTone(392, 0.18, 'square', 0.18);
+      this.playTone(466.16, 0.2, 'square', 0.16, 0.04);
+    }
+    this.triggerTrafficHornReaction();
     this.showFeedback('Horn!', 'good');
+  }
+
+  triggerTrafficHornReaction() {
+    this.hornPulse = 0.65;
+    if (!this.player) return;
+    for (const entity of this.entities) {
+      if (!['car', 'cyclist', 'cow', 'police'].includes(entity.type)) continue;
+      const dx = Math.abs(entity.mesh.position.x - this.player.position.x);
+      const dz = Math.abs(entity.mesh.position.z - this.player.position.z);
+      if (dx < 8.5 && dz < 42) {
+        entity.hornReact = 1;
+        entity.alertSide = Math.sign(entity.mesh.position.x - this.player.position.x) || (Math.random() > 0.5 ? 1 : -1);
+      }
+    }
   }
 
   playPickupSound() {
@@ -827,6 +844,7 @@ export class KathmanduChaos {
     this.shake = 0;
     this.feedbackTimer = 0;
     this.passengerBarkTimer = 0;
+    this.hornPulse = 0;
     this.nextAmbientTime = this.audio ? this.audio.ctx.currentTime + 0.25 : 0;
     this.ambientStep = 0;
     this.routeIntro = { active: false, age: 0, duration: 3.2 };
@@ -1160,9 +1178,39 @@ export class KathmanduChaos {
       const rb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, 0.6, z));
       const half = this.getObstacleHalfExtents(type, variant);
       this.world.createCollider(RAPIER.ColliderDesc.cuboid(...half), rb);
-      this.entities.push({ type, variant, mesh, body: rb, x, z, hit: false, wobble: rand(0, Math.PI * 2), penalty: type === 'police' ? 2 : 1 });
+      const ai = this.getTrafficAiProfile(type, variant);
+      this.entities.push({
+        type,
+        variant,
+        mesh,
+        body: rb,
+        x,
+        z,
+        baseX: x,
+        baseZ: z,
+        laneTarget: x,
+        aiOffset: 0,
+        aiSpeed: ai.speed,
+        aiRange: ai.range,
+        drift: ai.drift,
+        hit: false,
+        hornReact: 0,
+        alertSide: 0,
+        wobble: rand(0, Math.PI * 2),
+        penalty: type === 'police' ? 2 : 1
+      });
       this.spawnedSlots.push({ x, z, radius: type === 'police' ? 13 : 9 });
     }
+  }
+
+  getTrafficAiProfile(type, variant = 0) {
+    if (type === 'cyclist') return { speed: rand(7.2, 10.8), range: 0, drift: 0.55 };
+    if (type === 'cow') return { speed: rand(1.2, 2.1), range: 0, drift: 0.32 };
+    if (type === 'police') return { speed: 0, range: 0, drift: 0.18 };
+    const kind = variant % 4;
+    if (kind === 1) return { speed: rand(6.0, 8.2), range: 0, drift: 0.34 };
+    if (kind === 3) return { speed: rand(10.5, 15.0), range: 0, drift: 0.62 };
+    return { speed: rand(8.4, 12.2), range: 0, drift: 0.42 };
   }
 
   getObstacleHalfExtents(type, variant = 0) {
@@ -1276,6 +1324,7 @@ export class KathmanduChaos {
     this.state.invulnerable = Math.max(0, this.state.invulnerable - delta);
     this.feedbackTimer = Math.max(0, this.feedbackTimer - delta);
     this.passengerBarkTimer = Math.max(0, this.passengerBarkTimer - delta);
+    this.hornPulse = Math.max(0, this.hornPulse - delta);
     this.state.comboTimer = Math.max(0, this.state.comboTimer - delta);
     if (this.state.comboTimer <= 0 && this.state.combo > 1) {
       this.state.combo = 1;
@@ -1345,12 +1394,12 @@ export class KathmanduChaos {
 
   animateEntities(delta) {
     for (const entity of this.entities) {
+      this.updateTrafficAi(entity, delta);
       if (entity.type === 'cyclist') {
-        entity.mesh.position.x += Math.sin(this.state.elapsed * 2.2 + entity.wobble) * delta * 0.65;
-        entity.body.setTranslation(entity.mesh.position, true);
+        entity.mesh.rotation.z = Math.sin(this.state.elapsed * 2.8 + entity.wobble) * 0.08;
       }
       if (entity.type === 'cow') {
-        entity.mesh.rotation.y = Math.sin(this.state.elapsed * 1.6 + entity.wobble) * 0.18;
+        entity.mesh.rotation.y += Math.sin(this.state.elapsed * 1.6 + entity.wobble) * 0.01;
       }
       if (entity.type === 'police') {
         const signalArm = entity.mesh.getObjectByName('trafficSignalArm');
@@ -1384,6 +1433,54 @@ export class KathmanduChaos {
           billboard.quaternion.copy(this.camera.quaternion);
         }
       }
+    }
+  }
+
+  updateTrafficAi(entity, delta) {
+    if (entity.hit) return;
+
+    const dynamic = ['car', 'cyclist', 'cow'].includes(entity.type);
+    const playerDx = entity.mesh.position.x - this.player.position.x;
+    const playerDz = entity.mesh.position.z - this.player.position.z;
+    const nearPlayerAhead = playerDz < -3 && playerDz > -28 && Math.abs(playerDx) < 4.2;
+    const blockedAhead = dynamic ? this.entities.some((other) => {
+      if (other === entity || other.hit || other.type === 'police') return false;
+      const dz = other.mesh.position.z - entity.mesh.position.z;
+      return dz < -2 && dz > -12 && Math.abs(other.mesh.position.x - entity.mesh.position.x) < 2.8;
+    }) : false;
+
+    entity.hornReact = Math.max(0, entity.hornReact - delta * 1.8);
+    const alert = entity.hornReact > 0 ? entity.hornReact : 0;
+    const brakeFactor = blockedAhead || nearPlayerAhead ? 0.18 : 1;
+    const crawl = dynamic ? entity.aiSpeed * brakeFactor * delta : 0;
+    entity.aiOffset += crawl;
+
+    const driftWave = Math.sin(this.state.elapsed * 0.75 + entity.wobble) * entity.drift;
+    const alertNudge = alert ? (entity.alertSide || Math.sign(playerDx) || 1) * 1.15 * alert : 0;
+    const avoidNudge = nearPlayerAhead ? Math.sign(playerDx || 1) * 0.7 : 0;
+    const targetX = clamp(entity.baseX + driftWave + alertNudge + avoidNudge, -6.4, 6.4);
+    const targetZ = entity.baseZ - entity.aiOffset;
+    const previousX = entity.mesh.position.x;
+    const previousZ = entity.mesh.position.z;
+
+    entity.mesh.position.x += (targetX - entity.mesh.position.x) * (1 - Math.pow(0.001, delta));
+    entity.mesh.position.z += (targetZ - entity.mesh.position.z) * (1 - Math.pow(0.01, delta));
+    const lateralVelocity = (entity.mesh.position.x - previousX) / Math.max(delta, 0.001);
+    const forwardVelocity = (previousZ - entity.mesh.position.z) / Math.max(delta, 0.001);
+    entity.x = entity.mesh.position.x;
+    entity.z = entity.mesh.position.z;
+    entity.body.setTranslation(entity.mesh.position, true);
+
+    if (entity.type === 'car') {
+      entity.mesh.rotation.y = clamp(lateralVelocity * -0.035, -0.22, 0.22) + Math.sin(this.state.elapsed * 1.4 + entity.wobble) * 0.015;
+      entity.mesh.rotation.z = (blockedAhead ? 0.04 : 0) + alert * 0.05 * (entity.alertSide || 1);
+    } else if (entity.type === 'cyclist') {
+      entity.mesh.rotation.y = Math.sin(this.state.elapsed * 1.2 + entity.wobble) * 0.08 + clamp(lateralVelocity * -0.045, -0.25, 0.25) + alert * 0.18 * (entity.alertSide || 1);
+      entity.mesh.rotation.x = clamp(forwardVelocity * -0.004, -0.05, 0.02);
+    } else if (entity.type === 'cow') {
+      entity.mesh.rotation.y = Math.sin(this.state.elapsed * 1.1 + entity.wobble) * 0.18 + alert * 0.25 * (entity.alertSide || 1);
+    } else if (entity.type === 'police' && alert) {
+      entity.mesh.rotation.y = alert * 0.2 * (entity.alertSide || 1);
     }
   }
 

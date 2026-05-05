@@ -78,6 +78,7 @@ On mobile, use the on-screen controls:
 - Route-specific weather effects with monsoon rain and mist on wet routes
 - Gameplay-readable route landmarks including temples, chowks, bus parks, river bridges, and gate arches
 - Traffic variety with cars, buses, taxis, and scooters
+- Light AI traffic behavior with consistent forward movement, lane drift, braking around nearby vehicles, and horn reactions
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 - Route-specific ambient sounds for rain, market texture, temple bells, and police whistles
