@@ -22,6 +22,7 @@ const rand = (min, max) => min + Math.random() * (max - min);
 const choice = (items) => items[Math.floor(Math.random() * items.length)];
 const scorePopupTextureCache = new Map();
 const passengerCalloutTextureCache = new Map();
+const routeIntroLabelTextureCache = new Map();
 const obstacleNames = {
   car: 'traffic',
   cow: 'cow',
@@ -340,6 +341,7 @@ export class KathmanduChaos {
 
   startRouteIntro() {
     this.routeIntro = { active: true, age: 0, duration: 3.2 };
+    this.createRouteIntroLabels();
     this.ui.routeCountdown?.classList.remove('hidden');
     if (this.ui.routeCountdownLabel) this.ui.routeCountdownLabel.textContent = this.level.district;
     if (this.ui.routeCountdownValue) this.ui.routeCountdownValue.textContent = '3';
@@ -348,7 +350,89 @@ export class KathmanduChaos {
   finishRouteIntro() {
     this.routeIntro.active = false;
     this.ui.routeCountdown?.classList.add('hidden');
+    this.clearRouteIntroLabels();
     this.clock.getDelta();
+  }
+
+  createRouteIntroLabels() {
+    this.clearRouteIntroLabels();
+    const visual = this.getRouteVisualProfile();
+    const landmarks = this.level.landmarks ?? [];
+    this.routeIntroLabels = landmarks.map((item, index) => {
+      const z = -this.level.length * item.at;
+      const side = item.type === 'gateArch' || item.type === 'riverBridge' ? 0 : item.side ?? 1;
+      const x = side === 0 ? 0 : side * 14.2;
+      const y = item.type === 'gateArch' ? 7.1 : item.type === 'riverBridge' ? 2.7 : item.type === 'temple' ? 6.4 : 4.55;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: this.createRouteIntroLabelTexture(item.label, item.type, visual.rim),
+        transparent: true,
+        depthWrite: false,
+        opacity: 0
+      }));
+      sprite.name = 'routeIntroLandmarkLabel';
+      sprite.position.set(x, y, z);
+      sprite.scale.set(7.2, 1.7, 1);
+      this.scene.add(sprite);
+      return { sprite, item, index };
+    });
+  }
+
+  clearRouteIntroLabels() {
+    if (!this.routeIntroLabels) return;
+    for (const label of this.routeIntroLabels) {
+      this.scene.remove(label.sprite);
+      label.sprite.material?.dispose();
+    }
+    this.routeIntroLabels = [];
+  }
+
+  createRouteIntroLabelTexture(label, type, accent = 0xffcf42) {
+    const key = `${type}:${label}:${accent}`;
+    if (routeIntroLabelTextureCache.has(key)) return routeIntroLabelTextureCache.get(key);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 768;
+    canvas.height = 192;
+    const ctx = canvas.getContext('2d');
+    const accentColor = `#${new THREE.Color(accent).getHexString()}`;
+    const typeLabel = type === 'gateArch' ? 'Gate' : type === 'riverBridge' ? 'Bridge' : type === 'busPark' ? 'Bus park' : type === 'temple' ? 'Temple' : 'Chowk';
+
+    ctx.font = '900 62px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = 'rgba(10, 15, 18, 0.88)';
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 8;
+    const x = 34;
+    const y = 34;
+    const width = canvas.width - 68;
+    const height = 118;
+    const radius = 22;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = accentColor;
+    ctx.font = '900 28px Arial, sans-serif';
+    ctx.fillText(typeLabel.toUpperCase(), canvas.width / 2, y + 28, width - 48);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 58px Arial, sans-serif';
+    ctx.fillText(label.toUpperCase(), canvas.width / 2, y + 78, width - 56);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    routeIntroLabelTextureCache.set(key, texture);
+    return texture;
   }
 
   renderGarage() {
@@ -958,6 +1042,7 @@ export class KathmanduChaos {
     this.passengerBarkTimer = 0;
     this.passengerCalloutTimer = 0;
     this.hornPulse = 0;
+    this.routeIntroLabels = [];
     this.nextAmbientTime = this.audio ? this.audio.ctx.currentTime + 0.25 : 0;
     this.ambientStep = 0;
     this.routeIntro = { active: false, age: 0, duration: 3.2 };
@@ -1646,14 +1731,34 @@ export class KathmanduChaos {
     const lookEnd = new THREE.Vector3(this.player.position.x * 0.2, 1.4, this.player.position.z - 18);
     this.camera.position.lerpVectors(start, end, eased);
     this.camera.lookAt(lookStart.lerp(lookEnd, eased));
+    this.updateRouteIntroLabels(t);
 
     if (this.ui.routeCountdownValue) {
       const remaining = this.routeIntro.duration - this.routeIntro.age;
       this.ui.routeCountdownValue.textContent = remaining <= 0.55 ? 'GO' : Math.max(1, Math.ceil(remaining - 0.55)).toString();
     }
 
+    if (this.ui.routeCountdownLabel && this.routeIntroLabels.length > 0) {
+      const activeIndex = clamp(Math.floor(t * this.routeIntroLabels.length), 0, this.routeIntroLabels.length - 1);
+      this.ui.routeCountdownLabel.textContent = this.routeIntroLabels[activeIndex].item.label;
+    }
+
     if (this.routeIntro.age >= this.routeIntro.duration) {
       this.finishRouteIntro();
+    }
+  }
+
+  updateRouteIntroLabels(introProgress) {
+    if (!this.routeIntroLabels?.length) return;
+    for (const label of this.routeIntroLabels) {
+      const start = label.index / this.routeIntroLabels.length;
+      const local = clamp((introProgress - start) * this.routeIntroLabels.length, 0, 1);
+      const fadeOut = clamp((0.98 - introProgress) * 8, 0, 1);
+      const pulse = 1 + Math.sin(this.routeIntro.age * 5.5 + label.index) * 0.035;
+      const opacity = Math.sin(local * Math.PI) * fadeOut;
+      label.sprite.material.opacity = opacity;
+      label.sprite.quaternion.copy(this.camera.quaternion);
+      label.sprite.scale.set(7.2 * pulse, 1.7 * pulse, 1);
     }
   }
 
