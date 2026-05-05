@@ -19,6 +19,10 @@ export const LEVELS = [
       { type: 'chowk', label: 'Asan Chowk', at: 0.54, side: 1 },
       { type: 'gateArch', label: 'Asan Gate', at: 0.82 }
     ],
+    bonusObjectives: [
+      { type: 'passengersBefore', landmark: 'Asan Chowk', count: 2, reward: 160, label: 'Board 2 passengers before Asan Chowk' },
+      { type: 'speedThrough', landmark: 'Asan Gate', minSpeed: 20, reward: 120, label: 'Keep tempo above 20 through Asan Gate' }
+    ],
     palette: {
       sky: 0xbfe7ff,
       fog: 0xd9f0ff,
@@ -46,6 +50,10 @@ export const LEVELS = [
       { type: 'temple', label: 'Boudha Stupa', at: 0.5, side: 1 },
       { type: 'chowk', label: 'Chabahil Chowk', at: 0.76, side: -1 }
     ],
+    bonusObjectives: [
+      { type: 'cleanSegment', landmark: 'Boudha Stupa', reward: 180, label: 'Reach Boudha Stupa without a collision' },
+      { type: 'passengersBefore', landmark: 'Chabahil Chowk', count: 3, reward: 150, label: 'Board 3 passengers before Chabahil Chowk' }
+    ],
     palette: {
       sky: 0xcdeedc,
       fog: 0xe5f6e9,
@@ -72,6 +80,10 @@ export const LEVELS = [
       { type: 'gateArch', label: 'Patan Gate', at: 0.22 },
       { type: 'chowk', label: 'Mangal Bazaar', at: 0.5, side: -1 },
       { type: 'temple', label: 'Durbar Temple', at: 0.78, side: 1 }
+    ],
+    bonusObjectives: [
+      { type: 'cleanSegment', landmark: 'Mangal Bazaar', reward: 180, label: 'Reach Mangal Bazaar cleanly' },
+      { type: 'comboBefore', landmark: 'Durbar Temple', combo: 3, reward: 180, label: 'Build a x3 combo before Durbar Temple' }
     ],
     palette: {
       sky: 0xffe4bf,
@@ -101,6 +113,10 @@ export const LEVELS = [
       { type: 'busPark', label: 'Kalanki Stop', at: 0.52, side: -1 },
       { type: 'gateArch', label: 'Ring Road Gate', at: 0.8 }
     ],
+    bonusObjectives: [
+      { type: 'cleanSegment', landmark: 'Bishnumati Bridge', reward: 220, label: 'Cross Bishnumati Bridge cleanly' },
+      { type: 'passengersBefore', landmark: 'Kalanki Stop', count: 4, reward: 180, label: 'Board 4 passengers before Kalanki Stop' }
+    ],
     palette: {
       sky: 0x9eb7c7,
       fog: 0xcad7df,
@@ -128,6 +144,10 @@ export const LEVELS = [
       { type: 'chowk', label: 'Thamel Chowk', at: 0.18, side: 1 },
       { type: 'gateArch', label: 'Swayambhu Gate', at: 0.48 },
       { type: 'temple', label: 'Hill Stupa', at: 0.76, side: -1 }
+    ],
+    bonusObjectives: [
+      { type: 'speedThrough', landmark: 'Swayambhu Gate', minSpeed: 18, reward: 180, label: 'Keep speed above 18 through Swayambhu Gate' },
+      { type: 'cleanSegment', landmark: 'Hill Stupa', reward: 240, label: 'Reach Hill Stupa cleanly' }
     ],
     palette: {
       sky: 0xd7d0ff,

@@ -1023,6 +1023,7 @@ export class KathmanduChaos {
       combo: 1,
       comboTimer: 0,
       comboBonus: 0,
+      landmarkBonus: 0,
       maxCombo: 1,
       collisionPenalty: 0,
       collisions: 0,
@@ -1034,6 +1035,7 @@ export class KathmanduChaos {
     this.entities = [];
     this.pickups = [];
     this.hazards = [];
+    this.bonusObjectives = [];
     this.effects = [];
     this.weather = null;
     this.spawnedSlots = [];
@@ -1050,6 +1052,7 @@ export class KathmanduChaos {
 
     this.buildWorld();
     this.buildPlayer();
+    this.setupBonusObjectives();
     this.populateRoute();
     this.updateRouteUi();
     this.renderHud();
@@ -1659,6 +1662,20 @@ export class KathmanduChaos {
     this.scene.add(banner);
   }
 
+  setupBonusObjectives() {
+    const landmarksByLabel = new Map((this.level.landmarks ?? []).map((landmark) => [landmark.label, landmark]));
+    this.bonusObjectives = (this.level.bonusObjectives ?? []).map((objective, index) => {
+      const landmark = landmarksByLabel.get(objective.landmark);
+      return {
+        ...objective,
+        index,
+        z: landmark ? -this.level.length * landmark.at : -this.level.length,
+        completed: false,
+        missed: false
+      };
+    });
+  }
+
   update(delta) {
     if (!this.running || this.pausedByOverlay) return;
     if (this.routeIntro.active) {
@@ -1709,6 +1726,7 @@ export class KathmanduChaos {
     this.playerBody.setNextKinematicTranslation(this.player.position);
 
     this.animateEntities(delta);
+    this.checkBonusObjectives();
     this.checkPickups();
     this.checkHazards(delta);
     this.checkCollisions();
@@ -1899,6 +1917,44 @@ export class KathmanduChaos {
       return { label: 'Next passenger', position: nextPickup.mesh.position };
     }
     return { label: 'Finish gate', position: new THREE.Vector3(0, 0, -this.level.length) };
+  }
+
+  getActiveBonusObjective() {
+    return this.bonusObjectives.find((objective) => !objective.completed && !objective.missed && this.player.position.z > objective.z);
+  }
+
+  checkBonusObjectives() {
+    if (!this.bonusObjectives.length) return;
+    for (const objective of this.bonusObjectives) {
+      if (objective.completed || objective.missed) continue;
+      if (this.player.position.z > objective.z) continue;
+
+      if (this.isBonusObjectiveMet(objective)) {
+        objective.completed = true;
+        this.awardLandmarkBonus(objective);
+      } else {
+        objective.missed = true;
+        this.showFeedback(`Bonus missed: ${objective.landmark}`, 'bad');
+      }
+    }
+  }
+
+  isBonusObjectiveMet(objective) {
+    if (objective.type === 'passengersBefore') return this.state.passengers >= objective.count;
+    if (objective.type === 'speedThrough') return this.state.speed >= objective.minSpeed;
+    if (objective.type === 'comboBefore') return this.state.combo >= objective.combo;
+    if (objective.type === 'cleanSegment') return this.state.collisions === 0;
+    return false;
+  }
+
+  awardLandmarkBonus(objective) {
+    this.state.landmarkBonus += objective.reward;
+    this.state.score += objective.reward;
+    const position = new THREE.Vector3(0, 2.8, objective.z);
+    this.spawnScorePopup(position, `BONUS +${objective.reward}`, 'combo');
+    this.showFeedback(`Landmark bonus +${objective.reward}: ${objective.label}`, 'good');
+    this.playTone(880, 0.12, 'triangle', 0.16);
+    this.playTone(1320, 0.14, 'triangle', 0.11, 0.08);
   }
 
   showFeedback(message, tone = 'good') {
@@ -2245,7 +2301,8 @@ export class KathmanduChaos {
     const timeRemaining = Math.max(0, this.level.timeLimit - this.state.elapsed);
     const timeBonus = completed ? Math.round(timeRemaining * 10) : 0;
     const cleanBonus = completed && this.state.collisions === 0 ? 220 : completed && this.state.collisions <= 1 ? 90 : 0;
-    const finalFare = Math.max(0, this.state.passengerFare + this.state.comboBonus + timeBonus + cleanBonus - this.state.collisionPenalty);
+    const landmarkBonus = completed ? this.state.landmarkBonus : 0;
+    const finalFare = Math.max(0, this.state.passengerFare + this.state.comboBonus + landmarkBonus + timeBonus + cleanBonus - this.state.collisionPenalty);
     const passengerRatio = this.state.passengers / this.level.passengerGoal;
     let stars = 0;
     if (completed) {
@@ -2261,6 +2318,13 @@ export class KathmanduChaos {
       finalFare,
       passengerFare: this.state.passengerFare,
       comboBonus: this.state.comboBonus,
+      landmarkBonus,
+      bonusObjectives: this.bonusObjectives.map((objective) => ({
+        label: objective.label,
+        reward: objective.reward,
+        completed: objective.completed,
+        missed: objective.missed
+      })),
       timeBonus,
       cleanBonus,
       collisionPenalty: this.state.collisionPenalty,
@@ -2306,6 +2370,7 @@ export class KathmanduChaos {
     this.ui.resultsTimeBonus.textContent = result.timeBonus.toString();
     this.ui.resultsCleanBonus.textContent = result.cleanBonus.toString();
     if (this.ui.resultsComboBonus) this.ui.resultsComboBonus.textContent = result.comboBonus.toString();
+    if (this.ui.resultsLandmarkBonus) this.ui.resultsLandmarkBonus.textContent = result.landmarkBonus.toString();
     this.ui.resultsPenalty.textContent = result.collisionPenalty ? `-${result.collisionPenalty}` : '0';
     this.ui.resultsPassengers.textContent = `${result.passengers}/${result.passengerGoal}`;
     this.ui.resultsBest.textContent = result.newBest.toString();
@@ -2348,6 +2413,8 @@ export class KathmanduChaos {
     if (result.stars === 3) badges.push({ icon: '3', tone: 'good', title: 'Three-Star Run', detail: 'Fast and clean.' });
     if (result.collisions === 0) badges.push({ icon: 'C', tone: 'good', title: 'Clean Driving', detail: `+${result.cleanBonus} clean bonus` });
     if (result.maxCombo >= 3) badges.push({ icon: 'x', tone: 'good', title: `x${result.maxCombo} Combo`, detail: `+${result.comboBonus} combo fare` });
+    const completedBonuses = result.bonusObjectives?.filter((objective) => objective.completed) ?? [];
+    if (completedBonuses.length > 0) badges.push({ icon: 'L', tone: 'good', title: 'Landmark Bonus', detail: `${completedBonuses.length}/${result.bonusObjectives.length} earned +${result.landmarkBonus}` });
     return badges;
   }
 
@@ -2436,6 +2503,12 @@ export class KathmanduChaos {
     this.ui.targetLabel.textContent = target.label;
     this.ui.targetDistance.textContent = `${distance} m`;
     this.ui.targetArrow.style.transform = `rotate(${angle}rad)`;
+    if (this.ui.objective) {
+      const bonus = this.getActiveBonusObjective();
+      this.ui.objective.textContent = bonus
+        ? `Bonus: ${bonus.label} +${bonus.reward}`
+        : 'Drive through yellow rings to board passengers.';
+    }
   }
 
   updateRouteUi() {

@@ -74,6 +74,7 @@ On mobile, use the on-screen controls:
 - Route-specific passenger personality barks for commuters, students, vendors, tourists, and elders
 - Passenger callout bubbles and approach barks so waiting customers actively call for the tempo
 - Route intro camera labels that spotlight key landmarks before the run starts
+- Optional landmark bonus objectives that award extra fare without blocking route completion
 - Route visual polish with color grading, route-specific lighting, stronger silhouettes, and readable landmark accents
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout
