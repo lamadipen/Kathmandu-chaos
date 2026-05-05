@@ -68,6 +68,7 @@ On mobile, use the on-screen controls:
 - Pause/settings menu with resume, restart, garage, audio toggle, and reset progress
 - Route minimap with passenger and police markers
 - Upgradeable tempo stats for battery, brakes, and handling
+- Garage tempo skins with fare-bank unlocks and saved selection
 - Starter GLB character models with Nepali accessory overlays for passengers and traffic police
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - Mobile touch controls for steering, acceleration, braking, and pause
@@ -98,6 +99,7 @@ The garage screen tracks progression in browser `localStorage`.
 - Replaying a cleared route can improve its best fare.
 - Cleared-route fare is added to the garage fare bank.
 - Fare bank can buy Battery, Brakes, and Handling upgrades.
+- Fare bank can unlock and select tempo skins.
 
 ## Route Results
 

@@ -53,14 +53,14 @@ function textPlane(label, width, height, background, foreground) {
   );
 }
 
-export function createTempo(routeLabel = 'Ratna Park') {
+export function createTempo(routeLabel = 'Ratna Park', skin = {}) {
   const group = new THREE.Group();
-  const bodyMat = mat(0x159b77, { roughness: 0.42, metalness: 0.08 });
-  const roofMat = mat(0xffcf42, { roughness: 0.48 });
-  const trimMat = mat(0xf8f1dc, { roughness: 0.46 });
+  const bodyMat = mat(skin.body ?? 0x159b77, { roughness: 0.42, metalness: 0.08 });
+  const roofMat = mat(skin.roof ?? 0xffcf42, { roughness: 0.48 });
+  const trimMat = mat(skin.trim ?? 0xf8f1dc, { roughness: 0.46 });
   const blackMat = mat(0x171717, { roughness: 0.55 });
   const glassMat = mat(0x8bd3ff, { roughness: 0.12, metalness: 0.1 });
-  const redMat = mat(0xd62828, { roughness: 0.52 });
+  const redMat = mat(skin.stripe ?? 0xd62828, { roughness: 0.52 });
   const chromeMat = mat(0xe5e7eb, { roughness: 0.25, metalness: 0.28 });
 
   group.add(mesh(new THREE.BoxGeometry(2.4, 1.7, 3.25), bodyMat, [0, 0.4, 0]));

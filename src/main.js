@@ -24,6 +24,7 @@ const game = new KathmanduChaos({
     batteryUpgrade: document.querySelector('#batteryUpgrade'),
     brakesUpgrade: document.querySelector('#brakesUpgrade'),
     handlingUpgrade: document.querySelector('#handlingUpgrade'),
+    skinOptions: document.querySelector('#skinOptions'),
     audioToggle: document.querySelector('#audioToggle'),
     volumeSlider: document.querySelector('#volumeSlider'),
     resetProgress: document.querySelector('#resetProgress'),

@@ -41,6 +41,12 @@ const upgradeConfig = {
   brakes: { base: 64, step: 9, cost: 450 },
   handling: { base: 68, step: 8, cost: 500 }
 };
+const tempoSkins = [
+  { id: 'classic', name: 'Classic Green', cost: 0, body: 0x159b77, roof: 0xffcf42, trim: 0xf8f1dc, stripe: 0xd62828 },
+  { id: 'ratna', name: 'Ratna Red', cost: 650, body: 0xc92a2a, roof: 0xffd43b, trim: 0xf8f1dc, stripe: 0x159b77 },
+  { id: 'boudha', name: 'Boudha Blue', cost: 900, body: 0x1971c2, roof: 0xf8f1dc, trim: 0xffcf42, stripe: 0xd94848 },
+  { id: 'patan', name: 'Patan Brick', cost: 1200, body: 0x8f3f2d, roof: 0xd6c29b, trim: 0xffcf42, stripe: 0x2f9e44 }
+];
 
 export class KathmanduChaos {
   constructor({ canvas, ui }) {
@@ -107,6 +113,16 @@ export class KathmanduChaos {
   }
 
   loadProgress() {
+    const defaults = {
+      unlocked: 0,
+      bestScores: {},
+      wallet: 0,
+      upgrades: { battery: 0, brakes: 0, handling: 0 },
+      audioMuted: false,
+      audioVolume: 0.8,
+      skins: ['classic'],
+      selectedSkin: 'classic'
+    };
     try {
       const saved = JSON.parse(window.localStorage.getItem(progressKey));
       return {
@@ -119,10 +135,12 @@ export class KathmanduChaos {
           handling: clamp(Number(saved?.upgrades?.handling ?? 0), 0, 3)
         },
         audioMuted: Boolean(saved?.audioMuted),
-        audioVolume: clamp(Number(saved?.audioVolume ?? 0.8), 0, 1)
+        audioVolume: clamp(Number(saved?.audioVolume ?? 0.8), 0, 1),
+        skins: Array.from(new Set(['classic', ...(Array.isArray(saved?.skins) ? saved.skins : [])])).filter((id) => tempoSkins.some((skin) => skin.id === id)),
+        selectedSkin: tempoSkins.some((skin) => skin.id === saved?.selectedSkin) ? saved.selectedSkin : 'classic'
       };
     } catch {
-      return { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: false, audioVolume: 0.8 };
+      return defaults;
     }
   }
 
@@ -144,6 +162,10 @@ export class KathmanduChaos {
     this.ui.resultsGarage?.addEventListener('click', () => this.showGarage());
     [this.ui.batteryUpgrade, this.ui.brakesUpgrade, this.ui.handlingUpgrade].forEach((button) => {
       button?.addEventListener('click', () => this.buyUpgrade(button.dataset.upgrade));
+    });
+    this.ui.skinOptions?.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-skin-id]');
+      if (button) this.selectSkin(button.dataset.skinId);
     });
     this.ui.garageRoutes?.addEventListener('click', (event) => {
       const card = event.target.closest('[data-route-index]');
@@ -234,6 +256,7 @@ export class KathmanduChaos {
     this.ui.garageTime.textContent = level.timeLimit.toString();
     this.ui.garageBest.textContent = best.toString();
     this.renderUpgradeUi();
+    this.renderSkinUi();
     this.renderAudioButtons();
     this.ui.garageHint.textContent = this.selectedRoute === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1
       ? `Clear this route to unlock ${LEVELS[this.progress.unlocked + 1].name}.`
@@ -274,10 +297,54 @@ export class KathmanduChaos {
     this.renderGarage();
   }
 
+  getSelectedSkin() {
+    return tempoSkins.find((skin) => skin.id === this.progress.selectedSkin) ?? tempoSkins[0];
+  }
+
+  renderSkinUi() {
+    if (!this.ui.skinOptions) return;
+    const unlocked = new Set(this.progress.skins ?? ['classic']);
+    this.ui.skinOptions.innerHTML = tempoSkins.map((skin) => {
+      const owned = unlocked.has(skin.id);
+      const selected = this.progress.selectedSkin === skin.id;
+      const canBuy = this.progress.wallet >= skin.cost;
+      const label = selected ? 'Selected' : owned ? 'Use' : `${skin.cost} fare`;
+      return `
+        <button class="skin-option${selected ? ' selected' : ''}${!owned && !canBuy ? ' locked' : ''}" data-skin-id="${skin.id}" type="button">
+          <i style="--body:#${skin.body.toString(16).padStart(6, '0')}; --roof:#${skin.roof.toString(16).padStart(6, '0')}; --stripe:#${skin.stripe.toString(16).padStart(6, '0')}"></i>
+          <strong>${skin.name}</strong>
+          <span>${label}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  selectSkin(id) {
+    const skin = tempoSkins.find((item) => item.id === id);
+    if (!skin) return;
+    const owned = this.progress.skins.includes(id);
+    let message;
+    if (!owned) {
+      if (this.progress.wallet < skin.cost) {
+        this.ui.garageHint.textContent = `Need ${skin.cost} fare for ${skin.name}.`;
+        return;
+      }
+      this.progress.wallet -= skin.cost;
+      this.progress.skins.push(id);
+      message = `${skin.name} unlocked.`;
+    } else {
+      message = `${skin.name} selected.`;
+    }
+    this.progress.selectedSkin = id;
+    this.saveProgress();
+    this.renderGarage();
+    this.ui.garageHint.textContent = message;
+  }
+
   confirmResetProgress() {
     const confirmed = window.confirm('Reset unlocked routes, best fares, upgrades, and fare bank?');
     if (!confirmed) return;
-    this.progress = { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume };
+    this.progress = { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume, skins: ['classic'], selectedSkin: 'classic' };
     this.selectedRoute = 0;
     this.saveProgress();
     this.loadLevel(0, { showIntro: false });
@@ -780,7 +847,7 @@ export class KathmanduChaos {
   }
 
   buildPlayer() {
-    this.player = createTempo(this.level.routeBoard);
+    this.player = createTempo(this.level.routeBoard, this.getSelectedSkin());
     this.player.position.set(0, 0.9, 12);
     this.scene.add(this.player);
 
