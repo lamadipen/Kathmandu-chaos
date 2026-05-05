@@ -82,6 +82,68 @@ const passengerPersonalities = [
   { id: 'tourist', prefix: 'Tourist', fareBonus: 15 },
   { id: 'elder', prefix: 'Elder', fareBonus: 10 }
 ];
+const routeVisualProfiles = {
+  market: {
+    sky: 0xc7ecff,
+    fog: 0xd9f0ff,
+    ground: 0x71865f,
+    hemiSky: 0xfff7de,
+    hemiGround: 0x4f5e58,
+    sun: 0xfff1c2,
+    rim: 0xffcf42,
+    exposure: 1.08,
+    fogNear: 72,
+    fogFar: 500
+  },
+  stupa: {
+    sky: 0xd8f4e5,
+    fog: 0xe9f8ee,
+    ground: 0x668060,
+    hemiSky: 0xf6fff1,
+    hemiGround: 0x58665d,
+    sun: 0xffdfbd,
+    rim: 0xffcf42,
+    exposure: 1.04,
+    fogNear: 68,
+    fogFar: 470
+  },
+  durbar: {
+    sky: 0xffddb8,
+    fog: 0xffedcf,
+    ground: 0x7d6754,
+    hemiSky: 0xffe1b8,
+    hemiGround: 0x4d3b35,
+    sun: 0xffc17a,
+    rim: 0xf2a65a,
+    exposure: 1.02,
+    fogNear: 64,
+    fogFar: 450
+  },
+  monsoon: {
+    sky: 0x8faabd,
+    fog: 0xbfd2dd,
+    ground: 0x546b62,
+    hemiSky: 0xd7ebf5,
+    hemiGround: 0x344046,
+    sun: 0xadc6d6,
+    rim: 0x74c0e3,
+    exposure: 0.92,
+    fogNear: 46,
+    fogFar: 360
+  },
+  swayambhu: {
+    sky: 0xded7ff,
+    fog: 0xebe7ff,
+    ground: 0x5f6f5a,
+    hemiSky: 0xf4eeff,
+    hemiGround: 0x4a5362,
+    sun: 0xffe4ad,
+    rim: 0x8ce99a,
+    exposure: 1.06,
+    fogNear: 58,
+    fogFar: 430
+  }
+};
 const progressKey = 'kathmandu-chaos-progress-v1';
 const upgradeConfig = {
   battery: { base: 72, step: 8, cost: 550 },
@@ -451,6 +513,9 @@ export class KathmanduChaos {
       powerPreference: 'high-performance'
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.04;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
@@ -905,14 +970,16 @@ export class KathmanduChaos {
 
   buildWorld() {
     const { palette } = this.level;
-    this.scene.background = new THREE.Color(palette.sky);
-    this.scene.fog = new THREE.Fog(palette.fog, 70, 520);
+    const visual = this.getRouteVisualProfile();
+    this.renderer.toneMappingExposure = visual.exposure;
+    this.scene.background = new THREE.Color(visual.sky ?? palette.sky);
+    this.scene.fog = new THREE.Fog(visual.fog ?? palette.fog, visual.fogNear, visual.fogFar);
 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x59605d, 1.45);
+    const hemi = new THREE.HemisphereLight(visual.hemiSky, visual.hemiGround, this.level.wetRoad ? 1.18 : 1.36);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-    sun.position.set(-20, 34, -18);
+    const sun = new THREE.DirectionalLight(visual.sun, this.level.wetRoad ? 1.15 : 1.72);
+    sun.position.set(this.level.theme === 'durbar' ? -28 : -20, 36, this.level.wetRoad ? -10 : -18);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -55;
@@ -920,6 +987,10 @@ export class KathmanduChaos {
     sun.shadow.camera.top = 55;
     sun.shadow.camera.bottom = -55;
     this.scene.add(sun);
+
+    const rim = new THREE.DirectionalLight(visual.rim, this.level.wetRoad ? 0.72 : 0.48);
+    rim.position.set(24, 16, 18);
+    this.scene.add(rim);
 
     this.road = new THREE.Group();
     this.scene.add(this.road);
@@ -937,7 +1008,7 @@ export class KathmanduChaos {
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(90, this.level.length + 180),
-      new THREE.MeshStandardMaterial({ color: 0x6f8061, roughness: 0.85 })
+      new THREE.MeshStandardMaterial({ color: visual.ground, roughness: 0.85 })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.z = -this.level.length / 2 + 15;
@@ -952,14 +1023,26 @@ export class KathmanduChaos {
     this.addWeather();
   }
 
+  getRouteVisualProfile() {
+    return routeVisualProfiles[this.level.theme] ?? routeVisualProfiles.market;
+  }
+
   addRoadPaint() {
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xf4f0d8, transparent: true, opacity: 0.78 });
+    const visual = this.getRouteVisualProfile();
+    const lineMat = new THREE.MeshBasicMaterial({ color: this.level.wetRoad ? 0xdbeafe : 0xf4f0d8, transparent: true, opacity: this.level.wetRoad ? 0.58 : 0.78 });
+    const edgeMat = new THREE.MeshBasicMaterial({ color: visual.rim, transparent: true, opacity: this.level.wetRoad ? 0.32 : 0.18 });
     for (let z = 10; z > -this.level.length; z -= 22) {
       for (const x of [-4.05, -1.35, 1.35, 4.05]) {
         const dash = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 7.5), lineMat);
         dash.position.set(x, 0.03, z);
         this.scene.add(dash);
       }
+    }
+
+    for (const x of [-8.45, 8.45]) {
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, this.level.length + 58), edgeMat);
+      edge.position.set(x, 0.035, -this.level.length / 2 + 18);
+      this.scene.add(edge);
     }
   }
 
@@ -1051,7 +1134,52 @@ export class KathmanduChaos {
       }
 
       this.scene.add(landmark);
+      this.addLandmarkSilhouette(item, landmark);
     }
+  }
+
+  addLandmarkSilhouette(item, landmark) {
+    const visual = this.getRouteVisualProfile();
+    const accent = new THREE.Color(visual.rim ?? this.level.palette.accent);
+
+    if (item.type === 'gateArch') {
+      const topGlow = new THREE.Mesh(
+        new THREE.BoxGeometry(19.4, 0.12, 0.18),
+        new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.52 })
+      );
+      topGlow.position.set(0, 6.16, landmark.position.z - 0.74);
+      this.scene.add(topGlow);
+      return;
+    }
+
+    if (item.type === 'riverBridge') {
+      const waterGlow = new THREE.Mesh(
+        new THREE.PlaneGeometry(26, 16),
+        new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.12, depthWrite: false })
+      );
+      waterGlow.rotation.x = -Math.PI / 2;
+      waterGlow.position.set(0, 0.012, landmark.position.z);
+      this.scene.add(waterGlow);
+      return;
+    }
+
+    const side = item.side ?? (Math.sign(landmark.position.x) || 1);
+    const height = item.type === 'temple' ? 7.2 : item.type === 'busPark' ? 4.6 : 4.2;
+    const width = item.type === 'temple' ? 8.6 : item.type === 'busPark' ? 9.2 : 6.4;
+    const backdrop = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, height),
+      new THREE.MeshBasicMaterial({ color: 0x101418, transparent: true, opacity: this.level.wetRoad ? 0.2 : 0.16, depthWrite: false })
+    );
+    backdrop.position.set(landmark.position.x + side * 1.5, height / 2 + 0.3, landmark.position.z + 0.35);
+    backdrop.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+    this.scene.add(backdrop);
+
+    const rimMarker = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, height * 0.72, 0.12),
+      new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.7 })
+    );
+    rimMarker.position.set(landmark.position.x - side * 3.7, height / 2, landmark.position.z - 0.85);
+    this.scene.add(rimMarker);
   }
 
   getRoutePropTypes() {
