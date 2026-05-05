@@ -983,7 +983,49 @@ export class KathmanduChaos {
     }
     group.position.copy(position);
     this.scene.add(group);
-    this.effects.push({ group, age: 0, duration: 0.6 });
+    this.effects.push({ type: 'burst', group, age: 0, duration: 0.6 });
+  }
+
+  prepareFadeMaterials(object) {
+    object.traverse((child) => {
+      if (!child.isMesh || child.userData.fadeReady) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      const cloned = materials.map((material) => {
+        const copy = material.clone();
+        copy.transparent = true;
+        copy.depthWrite = false;
+        return copy;
+      });
+      child.material = Array.isArray(child.material) ? cloned : cloned[0];
+      child.userData.fadeReady = true;
+    });
+  }
+
+  setObjectOpacity(object, opacity) {
+    object.traverse((child) => {
+      if (!child.isMesh) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => {
+        material.opacity = opacity;
+      });
+    });
+  }
+
+  spawnBoardingEffect(pickup) {
+    const marker = pickup.mesh.getObjectByName('pickupMarker');
+    if (marker) marker.visible = false;
+    pickup.mesh.visible = true;
+    this.prepareFadeMaterials(pickup.mesh);
+    this.effects.push({
+      type: 'boarding',
+      group: pickup.mesh,
+      age: 0,
+      duration: 0.52,
+      start: pickup.mesh.position.clone(),
+      startScale: pickup.mesh.scale.clone(),
+      side: Math.sign(pickup.mesh.position.x - this.player.position.x) || 1,
+      targetOffset: new THREE.Vector3(0, 0.95, 0.62)
+    });
   }
 
   updateEffects(delta) {
@@ -991,13 +1033,30 @@ export class KathmanduChaos {
       const effect = this.effects[i];
       effect.age += delta;
       const life = clamp(1 - effect.age / effect.duration, 0, 1);
-      effect.group.children.forEach((child) => {
-        child.position.addScaledVector(child.userData.velocity, delta);
-        child.userData.velocity.y -= 4.5 * delta;
-        child.material.opacity = life;
-      });
+      if (effect.type === 'boarding') {
+        const t = clamp(effect.age / effect.duration, 0, 1);
+        const eased = 1 - (1 - t) ** 3;
+        const target = this.player.position.clone().add(effect.targetOffset);
+        target.x += effect.side * 0.52;
+        effect.group.position.lerpVectors(effect.start, target, eased);
+        effect.group.position.y += Math.sin(t * Math.PI) * 1.05;
+        effect.group.rotation.y += delta * 7.5;
+        effect.group.scale.copy(effect.startScale).multiplyScalar(1 - eased * 0.48);
+        this.setObjectOpacity(effect.group, life);
+      } else {
+        effect.group.children.forEach((child) => {
+          child.position.addScaledVector(child.userData.velocity, delta);
+          child.userData.velocity.y -= 4.5 * delta;
+          child.material.opacity = life;
+        });
+      }
       if (effect.age >= effect.duration) {
-        this.scene.remove(effect.group);
+        if (effect.type === 'boarding') {
+          effect.group.visible = false;
+          effect.group.scale.copy(effect.startScale);
+        } else {
+          this.scene.remove(effect.group);
+        }
         this.effects.splice(i, 1);
       }
     }
@@ -1010,12 +1069,12 @@ export class KathmanduChaos {
       const dz = Math.abs(this.player.position.z - pickup.mesh.position.z);
       if (dx < 2.15 && dz < 3.1) {
         pickup.collected = true;
-        pickup.mesh.visible = false;
         this.state.passengers += 1;
         this.state.passengerFare += pickup.value;
         this.state.score += pickup.value;
         this.state.speed = Math.max(5, this.state.speed * 0.72);
         this.spawnPickupBurst(pickup.mesh.position);
+        this.spawnBoardingEffect(pickup);
         this.playPickupSound();
         this.playPassengerBarkSound(pickup.index);
         this.showPassengerBark(this.getPassengerBark(pickup));
