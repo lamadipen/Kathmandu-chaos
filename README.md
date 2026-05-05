@@ -48,6 +48,7 @@ On mobile, use the on-screen controls:
 - Five playable route levels
 - Data-driven level configuration
 - Nepali-themed low-poly tempo, passengers, traffic police, cows, cyclists, street stalls, prayer flags, shop signs, and landmarks
+- Route-specific street props including bus stops, shutters, shrines, utility wires, brick stacks, puddles, barriers, and prayer wheels
 - Three.js 3D city, road, obstacles, and finish gates
 - Rapier physics world and colliders
 - Passenger pickup scoring

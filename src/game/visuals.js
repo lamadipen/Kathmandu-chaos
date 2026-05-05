@@ -363,3 +363,121 @@ export function createLandmark(theme = 'market', accent = 0xffcf42) {
   }
   return markShadows(group);
 }
+
+function addTinyLamp(group, x, z, color = 0xffcf42) {
+  group.add(mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.08, 8), mat(0x8f3f2d), [x, 0.08, z]));
+  group.add(mesh(new THREE.SphereGeometry(0.06, 8, 6), mat(color, { emissive: color, emissiveIntensity: 0.45 }), [x, 0.17, z]));
+}
+
+function createWire(start, control, end) {
+  const curve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(...start),
+    new THREE.Vector3(...control),
+    new THREE.Vector3(...end)
+  );
+  return mesh(new THREE.TubeGeometry(curve, 14, 0.018, 6), mat(0x171717, { roughness: 0.9 }));
+}
+
+function createBusStop(accent) {
+  const group = new THREE.Group();
+  group.add(mesh(new THREE.BoxGeometry(3.8, 0.18, 1.35), mat(accent), [0, 2.25, 0]));
+  group.add(mesh(new THREE.BoxGeometry(3.5, 0.12, 1.1), mat(0x1f2937), [0, 1.22, 0.12]));
+  group.add(mesh(new THREE.BoxGeometry(2.6, 0.22, 0.32), mat(0x8f3f2d), [0, 0.58, -0.12]));
+  for (const x of [-1.55, 1.55]) {
+    group.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.25, 8), mat(0x2f3136), [x, 1.08, -0.5]));
+    group.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.25, 8), mat(0x2f3136), [x, 1.08, 0.55]));
+  }
+  const sign = textPlane('BUS', 1.1, 0.42, '#ffd43b', '#111111');
+  sign.position.set(0, 1.72, -0.6);
+  group.add(sign);
+  return group;
+}
+
+function createRoadsideShrine(accent) {
+  const group = new THREE.Group();
+  group.add(mesh(new THREE.BoxGeometry(1.45, 0.42, 1.15), mat(0x8f3f2d), [0, 0.21, 0]));
+  group.add(mesh(new THREE.BoxGeometry(1.08, 1.0, 0.86), mat(0xd6c29b), [0, 0.92, 0]));
+  group.add(mesh(new THREE.ConeGeometry(0.86, 0.72, 4), mat(accent), [0, 1.78, 0], [0, Math.PI / 4, 0]));
+  group.add(mesh(new THREE.BoxGeometry(0.42, 0.58, 0.08), mat(0x202124), [0, 0.88, -0.47]));
+  addTinyLamp(group, -0.48, -0.62);
+  addTinyLamp(group, 0.48, -0.62);
+  return group;
+}
+
+function createShutterShop(label, accent) {
+  const group = new THREE.Group();
+  group.add(mesh(new THREE.BoxGeometry(4.2, 2.65, 1.05), mat(0x7a5c4d), [0, 1.32, 0]));
+  group.add(mesh(new THREE.BoxGeometry(3.35, 1.45, 0.08), mat(0x9ca3af, { metalness: 0.18, roughness: 0.42 }), [0, 0.88, -0.58]));
+  for (let y = 0.28; y < 1.46; y += 0.24) {
+    group.add(mesh(new THREE.BoxGeometry(3.42, 0.035, 0.1), mat(0x4b5563), [0, y, -0.64]));
+  }
+  const sign = textPlane(label, 2.6, 0.48, `#${accent.toString(16).padStart(6, '0')}`, '#141414');
+  sign.position.set(0, 2.25, -0.62);
+  group.add(sign);
+  return group;
+}
+
+function createBrickStack() {
+  const group = new THREE.Group();
+  for (let row = 0; row < 4; row += 1) {
+    for (let i = 0; i < 5 - row; i += 1) {
+      group.add(mesh(new THREE.BoxGeometry(0.52, 0.18, 0.28), mat(0xa84b34), [(i - 2 + row * 0.5) * 0.55, row * 0.19 + 0.09, 0]));
+    }
+  }
+  return group;
+}
+
+function createPuddle() {
+  const group = new THREE.Group();
+  group.add(mesh(new THREE.CylinderGeometry(1.25, 1.55, 0.025, 24), mat(0x7bc6dd, { transparent: true, opacity: 0.58, metalness: 0.2, roughness: 0.18 }), [0, 0.02, 0]));
+  group.add(mesh(new THREE.CylinderGeometry(0.38, 0.48, 0.03, 18), mat(0xdbeafe, { transparent: true, opacity: 0.5 }), [0.38, 0.04, -0.16]));
+  return group;
+}
+
+function createUtilityWires(accent) {
+  const group = new THREE.Group();
+  for (const x of [-9.8, 9.8]) {
+    group.add(mesh(new THREE.CylinderGeometry(0.09, 0.12, 6.2, 10), mat(0x4b3428), [x, 3.1, 0]));
+    group.add(mesh(new THREE.BoxGeometry(1.65, 0.08, 0.08), mat(0x4b3428), [x, 5.7, 0]));
+    group.add(mesh(new THREE.SphereGeometry(0.13, 8, 6), mat(accent), [x - Math.sign(x) * 0.5, 5.52, 0]));
+  }
+  group.add(createWire([-9.8, 5.7, -0.25], [0, 4.85, -0.2], [9.8, 5.7, -0.25]));
+  group.add(createWire([-9.8, 5.45, 0.18], [0, 4.72, 0.2], [9.8, 5.45, 0.18]));
+  return group;
+}
+
+function createPrayerWheelRow(accent) {
+  const group = new THREE.Group();
+  group.add(mesh(new THREE.BoxGeometry(3.6, 0.18, 0.42), mat(0x8f3f2d), [0, 0.32, 0]));
+  for (let i = 0; i < 5; i += 1) {
+    const wheel = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.34, 16), mat(i % 2 ? accent : 0xffcf42, { metalness: 0.14, roughness: 0.36 }), [-1.35 + i * 0.68, 0.82, 0], [Math.PI / 2, 0, 0]);
+    group.add(wheel);
+    group.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.58, 8), mat(0x202124), [-1.35 + i * 0.68, 0.82, 0], [Math.PI / 2, 0, 0]));
+  }
+  return group;
+}
+
+function createRoadBarrier() {
+  const group = new THREE.Group();
+  for (let i = 0; i < 4; i += 1) {
+    const color = i % 2 ? 0xffffff : 0xd94848;
+    group.add(mesh(new THREE.BoxGeometry(0.72, 0.42, 0.5), mat(color), [(i - 1.5) * 0.74, 0.21, 0]));
+  }
+  return group;
+}
+
+export function createStreetProp(type = 'busStop', options = {}) {
+  const accent = options.accent ?? 0xffcf42;
+  const label = options.label ?? 'Chiya';
+  let group;
+  if (type === 'shrine') group = createRoadsideShrine(accent);
+  else if (type === 'shutter') group = createShutterShop(label, accent);
+  else if (type === 'bricks') group = createBrickStack();
+  else if (type === 'puddle') group = createPuddle();
+  else if (type === 'wires') group = createUtilityWires(accent);
+  else if (type === 'prayerWheels') group = createPrayerWheelRow(accent);
+  else if (type === 'barrier') group = createRoadBarrier();
+  else group = createBusStop(accent);
+  group.name = `streetProp-${type}`;
+  return markShadows(group);
+}

@@ -9,6 +9,7 @@ import {
   createPoliceAccessories,
   createPrayerFlags,
   createShopSign,
+  createStreetProp,
   createStreetStall,
   createTempo
 } from './visuals.js';
@@ -716,6 +717,41 @@ export class KathmanduChaos {
       landmark.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       landmark.scale.setScalar(index === 0 ? 1 : 0.82);
       this.scene.add(landmark);
+    }
+
+    this.addStreetProps();
+  }
+
+  getRoutePropTypes() {
+    const shared = ['busStop', 'shutter', 'bricks', 'barrier'];
+    if (this.level.theme === 'stupa') return ['prayerWheels', 'shrine', 'busStop', 'shutter'];
+    if (this.level.theme === 'durbar') return ['shrine', 'bricks', 'shutter', 'barrier'];
+    if (this.level.theme === 'monsoon') return ['puddle', 'busStop', 'barrier', 'shutter'];
+    if (this.level.theme === 'swayambhu') return ['prayerWheels', 'shrine', 'bricks', 'busStop'];
+    return shared;
+  }
+
+  addStreetProps() {
+    const propTypes = this.getRoutePropTypes();
+    const labels = this.level.signs ?? ['Chiya', 'Momo'];
+    for (let z = -45; z > -this.level.length; z -= 58) {
+      for (const side of [-1, 1]) {
+        if (Math.random() < 0.18) continue;
+        const type = choice(propTypes);
+        const prop = createStreetProp(type, { accent: this.level.palette.accent, label: choice(labels) });
+        const x = side * (type === 'puddle' ? rand(8.9, 10.3) : rand(10.8, 14.6));
+        prop.position.set(x, 0, z + rand(-12, 12));
+        prop.rotation.y = side > 0 ? -Math.PI / 2 + rand(-0.08, 0.08) : Math.PI / 2 + rand(-0.08, 0.08);
+        if (type === 'puddle') prop.scale.setScalar(rand(0.75, 1.15));
+        if (type === 'bricks' || type === 'barrier') prop.scale.setScalar(rand(0.85, 1.25));
+        this.scene.add(prop);
+      }
+    }
+
+    for (let z = -135; z > -this.level.length; z -= 215) {
+      const wires = createStreetProp('wires', { accent: this.level.palette.accent });
+      wires.position.set(0, 0, z + rand(-18, 18));
+      this.scene.add(wires);
     }
   }
 
