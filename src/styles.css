@@ -600,7 +600,7 @@ body {
 .route-option {
   display: grid;
   grid-template-columns: 42px 1fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   align-items: center;
   min-height: 92px;
   padding: 12px;
@@ -614,7 +614,7 @@ body {
 }
 
 .route-option span {
-  grid-row: 1 / 3;
+  grid-row: 1 / 4;
   display: grid;
   place-items: center;
   width: 32px;
@@ -636,6 +636,27 @@ body {
   margin-top: 5px;
   color: #cbd5dd;
   font-weight: 800;
+}
+
+.route-option i,
+.route-option em {
+  display: inline-block;
+  margin-top: 7px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.route-option i {
+  color: #ffcf42;
+  font-size: 0.92rem;
+  letter-spacing: 0;
+}
+
+.route-option em {
+  color: #9fb0bc;
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .route-option.selected {
@@ -697,6 +718,37 @@ body {
   color: #cbd5dd;
   font-size: 0.68rem;
   font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mastery-panel {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid rgb(255 207 66 / 24%);
+  border-radius: 8px;
+  background: rgb(255 207 66 / 10%);
+}
+
+.mastery-panel strong {
+  color: #ffcf42;
+  font-size: 1.45rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.mastery-panel p {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.mastery-panel small {
+  color: #cbd5dd;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.3;
   text-transform: uppercase;
 }
 

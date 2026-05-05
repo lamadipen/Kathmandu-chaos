@@ -121,6 +121,7 @@ export class KathmanduChaos {
     const defaults = {
       unlocked: 0,
       bestScores: {},
+      routeStars: {},
       wallet: 0,
       upgrades: { battery: 0, brakes: 0, handling: 0 },
       audioMuted: false,
@@ -133,6 +134,7 @@ export class KathmanduChaos {
       return {
         unlocked: clamp(Number(saved?.unlocked ?? 0), 0, LEVELS.length - 1),
         bestScores: saved?.bestScores ?? {},
+        routeStars: saved?.routeStars ?? {},
         wallet: Math.max(0, Number(saved?.wallet ?? 0)),
         upgrades: {
           battery: clamp(Number(saved?.upgrades?.battery ?? 0), 0, 3),
@@ -246,28 +248,65 @@ export class KathmanduChaos {
       const locked = index > this.progress.unlocked;
       const selected = index === this.selectedRoute;
       const best = this.progress.bestScores[index] ?? 0;
+      const stars = this.getRouteStars(index);
+      const status = locked ? 'Locked' : stars > 0 ? `${stars}/3 mastery` : 'Uncleared';
       return `
         <button class="route-option${selected ? ' selected' : ''}${locked ? ' locked' : ''}" data-route-index="${index}" type="button">
           <span>${index + 1}</span>
           <strong>${level.name}</strong>
           <small>${locked ? 'Locked' : best ? `Best fare ${best}` : level.district}</small>
+          <i aria-hidden="true">${this.renderStarText(stars)}</i>
+          <em>${status}</em>
         </button>
       `;
     }).join('');
 
     const level = LEVELS[this.selectedRoute];
     const best = this.progress.bestScores[this.selectedRoute] ?? 0;
+    const stars = this.getRouteStars(this.selectedRoute);
     this.ui.garageRouteName.textContent = level.name;
     this.ui.garageRouteStory.textContent = level.story;
     this.ui.garagePassengers.textContent = level.passengerGoal.toString();
     this.ui.garageTime.textContent = level.timeLimit.toString();
     this.ui.garageBest.textContent = best.toString();
+    if (this.ui.garageMasteryStars) this.ui.garageMasteryStars.textContent = this.renderStarText(stars);
+    if (this.ui.garageMasteryStatus) this.ui.garageMasteryStatus.textContent = this.getMasteryStatus(this.selectedRoute);
+    if (this.ui.garageUnlockHint) this.ui.garageUnlockHint.textContent = this.getUnlockHint(this.selectedRoute);
     this.renderUpgradeUi();
     this.renderSkinUi();
     this.renderAudioButtons();
     this.ui.garageHint.textContent = this.selectedRoute === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1
       ? `Clear this route to unlock ${LEVELS[this.progress.unlocked + 1].name}.`
       : 'Replay cleared routes to improve your best fare.';
+  }
+
+  getRouteStars(index) {
+    return clamp(Number(this.progress.routeStars?.[index] ?? 0), 0, 3);
+  }
+
+  renderStarText(stars) {
+    const filled = clamp(stars, 0, 3);
+    return `${'★'.repeat(filled)}${'☆'.repeat(3 - filled)}`;
+  }
+
+  getMasteryStatus(index) {
+    const level = LEVELS[index];
+    const locked = index > this.progress.unlocked;
+    const stars = this.getRouteStars(index);
+    if (locked) return `Locked. Clear ${LEVELS[index - 1]?.name ?? 'the previous route'} first.`;
+    if (stars === 3) return 'Mastered: fast, clean, and fully passenger-ready.';
+    if (stars === 2) return 'Strong clear. Chase a clean run with more time left for 3 stars.';
+    if (stars === 1) return 'Cleared. Improve collisions and finish time to raise mastery.';
+    return `Goal: board ${level.passengerGoal} passengers before the timer ends.`;
+  }
+
+  getUnlockHint(index) {
+    if (index > this.progress.unlocked) return 'Locked route';
+    if (index < LEVELS.length - 1) {
+      const next = LEVELS[index + 1];
+      return index === this.progress.unlocked ? `Clear this route to unlock ${next.name}.` : `${next.name} is available after this route.`;
+    }
+    return 'Final route. Earn 3 stars to fully master Maya’s permit run.';
   }
 
   renderUpgradeUi() {
@@ -351,7 +390,7 @@ export class KathmanduChaos {
   confirmResetProgress() {
     const confirmed = window.confirm('Reset unlocked routes, best fares, upgrades, and fare bank?');
     if (!confirmed) return;
-    this.progress = { unlocked: 0, bestScores: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume, skins: ['classic'], selectedSkin: 'classic' };
+    this.progress = { unlocked: 0, bestScores: {}, routeStars: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume, skins: ['classic'], selectedSkin: 'classic' };
     this.selectedRoute = 0;
     this.saveProgress();
     this.loadLevel(0, { showIntro: false });
@@ -1741,6 +1780,7 @@ export class KathmanduChaos {
 
   applySuccessfulResult(result) {
     this.progress.bestScores[this.levelIndex] = result.newBest;
+    this.progress.routeStars[this.levelIndex] = Math.max(this.getRouteStars(this.levelIndex), result.stars);
     this.progress.wallet += result.finalFare;
     if (result.unlockedNext) this.progress.unlocked += 1;
     result.walletAfter = this.progress.wallet;
