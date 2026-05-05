@@ -74,6 +74,7 @@ On mobile, use the on-screen controls:
 - End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout
 - Floating 3D score popups for passenger fares, combo bonuses, hazards, and collisions
 - Advanced-route minimap hazard markers for potholes, puddles, and barriers
+- Route-specific weather effects with monsoon rain and mist on wet routes
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 

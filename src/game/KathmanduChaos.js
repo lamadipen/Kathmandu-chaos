@@ -60,6 +60,7 @@ export class KathmanduChaos {
     this.pickups = [];
     this.hazards = [];
     this.effects = [];
+    this.weather = null;
     this.running = false;
     this.pausedByOverlay = true;
     this.audio = null;
@@ -674,6 +675,7 @@ export class KathmanduChaos {
     this.pickups = [];
     this.hazards = [];
     this.effects = [];
+    this.weather = null;
     this.spawnedSlots = [];
     this.shake = 0;
     this.feedbackTimer = 0;
@@ -735,6 +737,7 @@ export class KathmanduChaos {
     this.addRoadPaint();
     this.addCityBlocks();
     this.addRouteDressing();
+    this.addWeather();
   }
 
   addRoadPaint() {
@@ -845,6 +848,67 @@ export class KathmanduChaos {
       wires.position.set(0, 0, z + rand(-18, 18));
       this.scene.add(wires);
     }
+  }
+
+  addWeather() {
+    if (!this.level.wetRoad) return;
+    const count = 520;
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count);
+    for (let i = 0; i < count; i += 1) {
+      positions[i * 3] = rand(-24, 24);
+      positions[i * 3 + 1] = rand(3, 20);
+      positions[i * 3 + 2] = rand(-45, 35);
+      velocities[i] = rand(18, 30);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+      color: 0xdbeafe,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false
+    });
+    const rain = new THREE.Points(geometry, material);
+    rain.name = 'monsoonRain';
+    rain.frustumCulled = false;
+    this.scene.add(rain);
+
+    const mist = new THREE.Mesh(
+      new THREE.PlaneGeometry(42, 18),
+      new THREE.MeshBasicMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.08, depthWrite: false })
+    );
+    mist.name = 'monsoonMist';
+    const baseZ = this.player?.position.z ?? 0;
+    mist.position.set(0, 5.5, baseZ - 25);
+    mist.rotation.x = -0.2;
+    this.scene.add(mist);
+
+    this.weather = { rain, mist, positions, velocities };
+  }
+
+  updateWeather(delta) {
+    if (!this.weather) return;
+    const { rain, mist, positions, velocities } = this.weather;
+    const playerZ = this.player?.position.z ?? 0;
+    const playerX = this.player?.position.x ?? 0;
+    for (let i = 0; i < velocities.length; i += 1) {
+      const offset = i * 3;
+      positions[offset] -= delta * 2.4;
+      positions[offset + 1] -= velocities[i] * delta;
+      positions[offset + 2] += delta * 7.5;
+      if (positions[offset + 1] < 0.2 || positions[offset + 2] > 36) {
+        positions[offset] = rand(-24, 24);
+        positions[offset + 1] = rand(12, 22);
+        positions[offset + 2] = rand(-48, -22);
+      }
+    }
+    rain.geometry.attributes.position.needsUpdate = true;
+    rain.position.set(playerX * 0.35, 0, playerZ - 8);
+    mist.position.set(playerX * 0.2, 5.5, playerZ - 28);
+    mist.quaternion.copy(this.camera.quaternion);
   }
 
   buildPlayer() {
@@ -1018,6 +1082,7 @@ export class KathmanduChaos {
     if (!this.running || this.pausedByOverlay) return;
     if (this.routeIntro.active) {
       this.updateRouteIntro(delta);
+      this.updateWeather(delta);
       this.renderHud();
       return;
     }
@@ -1068,6 +1133,7 @@ export class KathmanduChaos {
 
     this.world.step();
     this.updateCamera(delta);
+    this.updateWeather(delta);
     this.renderHud();
   }
 
