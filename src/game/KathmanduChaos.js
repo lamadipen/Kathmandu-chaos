@@ -8,6 +8,7 @@ import {
   createPassengerAccessories,
   createPoliceAccessories,
   createPrayerFlags,
+  createRoadHazard,
   createShopSign,
   createStreetProp,
   createStreetStall,
@@ -50,6 +51,7 @@ export class KathmanduChaos {
     this.clock = new THREE.Clock();
     this.entities = [];
     this.pickups = [];
+    this.hazards = [];
     this.effects = [];
     this.running = false;
     this.pausedByOverlay = true;
@@ -587,6 +589,7 @@ export class KathmanduChaos {
     this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     this.entities = [];
     this.pickups = [];
+    this.hazards = [];
     this.effects = [];
     this.spawnedSlots = [];
     this.shake = 0;
@@ -776,6 +779,7 @@ export class KathmanduChaos {
     this.addObstacles('cow', this.level.cows);
     this.addObstacles('cyclist', this.level.cyclists);
     this.addObstacles('police', this.level.police);
+    this.addHazards();
     this.addFinishGate();
     this.renderMinimapMarkers();
   }
@@ -856,6 +860,42 @@ export class KathmanduChaos {
     return mesh;
   }
 
+  addHazards() {
+    const hazards = this.level.hazards ?? {};
+    this.addHazardType('pothole', hazards.potholes ?? 0);
+    this.addHazardType('puddle', hazards.puddles ?? 0);
+    this.addHazardType('barrier', hazards.barriers ?? 0);
+  }
+
+  addHazardType(type, count) {
+    const start = -70;
+    const end = -this.level.length + 70;
+    for (let i = 0; i < count; i += 1) {
+      const { x, z } = this.findHazardSlot(start, end, type);
+      const mesh = createRoadHazard(type, this.level.palette.accent);
+      mesh.position.set(x, type === 'barrier' ? 0.02 : 0.04, z);
+      mesh.rotation.y = rand(-0.25, 0.25);
+      if (type === 'pothole') mesh.scale.setScalar(rand(0.82, 1.28));
+      if (type === 'puddle') mesh.scale.set(rand(0.85, 1.35), 1, rand(0.72, 1.1));
+      this.scene.add(mesh);
+      this.hazards.push({ type, mesh, x, z, hit: false, cooldown: 0 });
+      this.spawnedSlots.push({ x, z, radius: type === 'barrier' ? 9 : 6 });
+    }
+  }
+
+  findHazardSlot(start, end, type) {
+    const minGap = type === 'barrier' ? 13 : 8;
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const z = rand(start, end);
+      const lanePool = type === 'puddle' ? LANES : LANES.slice(1, -1);
+      const x = choice(lanePool);
+      const blocked = this.spawnedSlots.some((slot) => Math.abs(slot.z - z) < slot.radius + minGap && Math.abs(slot.x - x) < 2.4);
+      const nearPassenger = this.pickups.some((pickup) => Math.abs(pickup.z - z) < 18 && Math.abs(pickup.x - x) < 3.3);
+      if (!blocked && !nearPassenger) return { x, z };
+    }
+    return { x: choice(LANES.slice(1, -1)), z: rand(start, end) };
+  }
+
   async attachPoliceModel(group) {
     if (!this.modelManifest.enabled || !this.modelManifest.police) return;
     try {
@@ -931,6 +971,7 @@ export class KathmanduChaos {
 
     this.animateEntities(delta);
     this.checkPickups();
+    this.checkHazards(delta);
     this.checkCollisions();
     this.checkEndState();
     this.updateEffects(delta);
@@ -1162,6 +1203,52 @@ export class KathmanduChaos {
         this.showPassengerBark(this.getPassengerBark(pickup));
         const comboText = comboBonus > 0 ? ` x${this.state.combo} combo +${comboBonus}` : '';
         this.showFeedback(`Passenger boarded +${pickup.value}${comboText}`, 'good');
+      }
+    }
+  }
+
+  checkHazards(delta) {
+    for (const hazard of this.hazards) {
+      hazard.cooldown = Math.max(0, hazard.cooldown - delta);
+      if (hazard.hit && hazard.type !== 'puddle') continue;
+      if (hazard.cooldown > 0) continue;
+
+      const dx = Math.abs(this.player.position.x - hazard.mesh.position.x);
+      const dz = Math.abs(this.player.position.z - hazard.mesh.position.z);
+      const range = hazard.type === 'barrier' ? { x: 1.9, z: 1.8 } : hazard.type === 'puddle' ? { x: 1.8, z: 2.2 } : { x: 1.55, z: 1.65 };
+      if (dx >= range.x || dz >= range.z) continue;
+
+      hazard.cooldown = 1.1;
+      if (hazard.type === 'barrier') {
+        hazard.hit = true;
+        this.state.hearts -= 1;
+        this.state.collisionPenalty += 80;
+        this.state.collisions += 1;
+        this.state.score = Math.max(0, this.state.score - 80);
+        this.state.speed = Math.max(4, this.state.speed * 0.42);
+        this.state.invulnerable = 0.8;
+        this.shake = 0.38;
+        this.resetCombo();
+        this.playHitSound('car');
+        this.flashHit();
+        this.showFeedback('Blocked lane -1 chance', 'bad');
+        hazard.mesh.rotation.z = 0.22;
+      } else if (hazard.type === 'pothole') {
+        hazard.hit = true;
+        this.state.collisionPenalty += 35;
+        this.state.score = Math.max(0, this.state.score - 35);
+        this.state.speed = Math.max(5, this.state.speed * 0.58);
+        this.state.steer += rand(-0.8, 0.8);
+        this.shake = Math.max(this.shake, 0.24);
+        this.resetCombo();
+        this.playNoise(0.12, 0.1);
+        this.showFeedback('Pothole! Combo broken -35', 'bad');
+      } else {
+        this.state.speed = Math.max(5, this.state.speed * 0.72);
+        this.state.steer += rand(-0.55, 0.55);
+        this.shake = Math.max(this.shake, 0.13);
+        this.playNoise(0.08, 0.06);
+        this.showFeedback('Slippery puddle', 'good');
       }
     }
   }

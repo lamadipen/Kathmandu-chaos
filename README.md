@@ -59,6 +59,7 @@ On mobile, use the on-screen controls:
 - Boarding animation where collected passengers hop/fade into the tempo
 - Simple character motion for passenger waving and traffic-police hand signals
 - Combo scoring that rewards fast clean passenger pickup streaks
+- Route-specific hazards including potholes, puddles, and blocked-lane barriers
 - Time limit, health/chances, route progress, and retry flow
 - Responsive HUD and overlay UI
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
@@ -179,7 +180,7 @@ npm run preview
 ## Future Ideas
 
 - Vehicle unlocks: tempo, microbus, scooter, delivery EV
-- Route-specific hazards: potholes, rain puddles, road closures, festival crowds
+- Festival crowd routes and lane closures
 - Combo scoring for clean driving and fast pickups
 - Garage upgrades for handling, battery, braking, and passenger capacity
 - Audio: horns, street ambience, pickup sounds, police whistle

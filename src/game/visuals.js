@@ -389,6 +389,30 @@ export function createLandmark(theme = 'market', accent = 0xffcf42) {
   return markShadows(group);
 }
 
+export function createRoadHazard(type = 'pothole', accent = 0xffcf42) {
+  const group = new THREE.Group();
+  group.name = `roadHazard-${type}`;
+
+  if (type === 'puddle') {
+    group.add(mesh(new THREE.CylinderGeometry(1.25, 1.7, 0.035, 28), mat(0x74c0e3, { transparent: true, opacity: 0.62, metalness: 0.24, roughness: 0.16 }), [0, 0.02, 0]));
+    group.add(mesh(new THREE.CylinderGeometry(0.42, 0.58, 0.04, 18), mat(0xdbeafe, { transparent: true, opacity: 0.48 }), [0.34, 0.04, -0.22]));
+  } else if (type === 'barrier') {
+    group.add(mesh(new THREE.BoxGeometry(2.2, 0.48, 0.42), mat(0xd94848), [0, 0.24, 0]));
+    group.add(mesh(new THREE.BoxGeometry(2.25, 0.12, 0.46), mat(0xffffff), [0, 0.28, 0]));
+    for (const x of [-0.82, 0.82]) {
+      group.add(mesh(new THREE.BoxGeometry(0.16, 0.72, 0.16), mat(0x202124), [x, 0.36, 0]));
+    }
+    const lamp = mesh(new THREE.SphereGeometry(0.12, 10, 8), mat(accent, { emissive: accent, emissiveIntensity: 0.32 }), [0, 0.7, 0]);
+    group.add(lamp);
+  } else {
+    group.add(mesh(new THREE.CylinderGeometry(1.0, 1.25, 0.06, 18), mat(0x151719, { roughness: 0.96 }), [0, 0.025, 0]));
+    group.add(mesh(new THREE.CylinderGeometry(0.64, 0.82, 0.065, 16), mat(0x2f3437, { roughness: 0.9 }), [0.08, 0.055, -0.05]));
+    group.add(mesh(new THREE.TorusGeometry(1.03, 0.045, 8, 24), mat(0x6b5f52), [0, 0.08, 0], [Math.PI / 2, 0, 0]));
+  }
+
+  return markShadows(group);
+}
+
 function addTinyLamp(group, x, z, color = 0xffcf42) {
   group.add(mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.08, 8), mat(0x8f3f2d), [x, 0.08, z]));
   group.add(mesh(new THREE.SphereGeometry(0.06, 8, 6), mat(color, { emissive: color, emissiveIntensity: 0.45 }), [x, 0.17, z]));
