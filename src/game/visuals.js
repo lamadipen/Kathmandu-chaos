@@ -426,6 +426,80 @@ export function createLandmark(theme = 'market', accent = 0xffcf42) {
   return markShadows(group);
 }
 
+export function createRouteLandmark(type = 'chowk', options = {}) {
+  const { label = 'Chowk', accent = 0xffcf42, theme = 'market' } = options;
+  const group = new THREE.Group();
+  const dark = mat(0x27221f, { roughness: 0.76 });
+  const brick = mat(theme === 'durbar' ? 0x8f3f2d : 0xb76245, { roughness: 0.82 });
+  const stone = mat(0xd8d2bd, { roughness: 0.72 });
+  const metal = mat(0x6b7280, { roughness: 0.42, metalness: 0.16 });
+  const sign = textPlane(label, 4.6, 0.78, `#${accent.toString(16).padStart(6, '0')}`, '#141414');
+
+  if (type === 'gateArch') {
+    group.add(mesh(new THREE.BoxGeometry(1.0, 5.5, 1.0), brick, [-10.4, 2.75, 0]));
+    group.add(mesh(new THREE.BoxGeometry(1.0, 5.5, 1.0), brick, [10.4, 2.75, 0]));
+    group.add(mesh(new THREE.BoxGeometry(22.0, 0.82, 1.15), brick, [0, 5.45, 0]));
+    group.add(mesh(new THREE.BoxGeometry(18.4, 0.18, 1.28), mat(accent), [0, 5.96, 0]));
+    sign.position.set(0, 4.9, -0.66);
+    group.add(sign);
+    const flags = createPrayerFlags(8.4);
+    flags.position.set(0, 6.35, -0.15);
+    group.add(flags);
+  } else if (type === 'riverBridge') {
+    group.add(mesh(new THREE.BoxGeometry(24, 0.08, 14), mat(0x2f9dc5, { roughness: 0.35, metalness: 0.05 }), [0, -0.12, 0]));
+    group.add(mesh(new THREE.BoxGeometry(19.5, 0.18, 13.5), mat(0x3f464d, { roughness: 0.48 }), [0, 0.05, 0]));
+    for (const x of [-9.9, 9.9]) {
+      group.add(mesh(new THREE.BoxGeometry(0.26, 1.15, 14.6), metal, [x, 0.75, 0]));
+      for (let z = -6; z <= 6; z += 3) {
+        group.add(mesh(new THREE.BoxGeometry(0.42, 1.0, 0.18), stone, [x, 0.65, z]));
+      }
+    }
+    sign.position.set(-11.8, 2.2, -3.2);
+    sign.rotation.y = Math.PI / 2;
+    group.add(sign);
+  } else if (type === 'busPark') {
+    group.add(mesh(new THREE.BoxGeometry(7.5, 0.25, 4.2), mat(0x4b5563), [0, 0.12, 0]));
+    group.add(mesh(new THREE.BoxGeometry(7.9, 0.34, 4.6), mat(accent), [0, 2.75, 0]));
+    for (const x of [-3.25, 3.25]) {
+      group.add(mesh(new THREE.BoxGeometry(0.24, 2.55, 0.24), metal, [x, 1.42, -1.8]));
+      group.add(mesh(new THREE.BoxGeometry(0.24, 2.55, 0.24), metal, [x, 1.42, 1.8]));
+    }
+    group.add(mesh(new THREE.BoxGeometry(5.8, 0.38, 0.55), dark, [0, 1.0, -1.5]));
+    group.add(mesh(new THREE.BoxGeometry(1.8, 1.2, 3.2), mat(0x118ab2), [-2.2, 0.8, 0.3]));
+    group.add(mesh(new THREE.BoxGeometry(1.8, 1.2, 3.2), mat(0xffc43d), [2.0, 0.8, 0.3]));
+    sign.position.set(0, 3.18, -2.36);
+    group.add(sign);
+  } else if (type === 'temple') {
+    const stupaLike = theme === 'stupa' || theme === 'swayambhu';
+    if (stupaLike) {
+      group.add(mesh(new THREE.CylinderGeometry(3.1, 3.8, 1.1, 34), stone, [0, 0.55, 0]));
+      group.add(mesh(new THREE.SphereGeometry(2.75, 34, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xffffff), [0, 1.08, 0]));
+      group.add(mesh(new THREE.BoxGeometry(1.8, 0.76, 1.8), mat(0xffcf42), [0, 2.48, 0]));
+      group.add(mesh(new THREE.ConeGeometry(1.05, 2.5, 5), mat(accent), [0, 4.02, 0]));
+    } else {
+      group.add(mesh(new THREE.BoxGeometry(5.4, 3.6, 3.0), brick, [0, 1.8, 0]));
+      group.add(mesh(new THREE.ConeGeometry(3.6, 1.35, 4), dark, [0, 4.18, 0], [0, Math.PI / 4, 0]));
+      group.add(mesh(new THREE.ConeGeometry(2.65, 1.0, 4), dark, [0, 5.12, 0], [0, Math.PI / 4, 0]));
+      for (const x of [-1.7, 0, 1.7]) group.add(mesh(new THREE.BoxGeometry(0.55, 1.15, 0.16), stone, [x, 1.8, -1.58]));
+    }
+    sign.position.set(0, 1.0, -2.08);
+    group.add(sign);
+  } else {
+    group.add(mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.18, 36), mat(0x4a5568), [0, 0.09, 0]));
+    group.add(mesh(new THREE.CylinderGeometry(0.36, 0.48, 3.1, 16), metal, [0, 1.62, 0]));
+    group.add(mesh(new THREE.BoxGeometry(5.3, 0.72, 0.18), mat(accent), [0, 3.38, -0.12]));
+    sign.position.set(0, 3.38, -0.25);
+    group.add(sign);
+    for (let i = 0; i < 6; i += 1) {
+      const angle = (i / 6) * Math.PI * 2;
+      group.add(mesh(new THREE.BoxGeometry(0.45, 0.34, 0.08), mat(pick([0xd94848, 0x2b6cb0, 0x2f9e44, 0xffcf42], i)), [Math.cos(angle) * 2.6, 0.44, Math.sin(angle) * 2.6], [0, -angle, 0]));
+    }
+  }
+
+  group.name = `routeLandmark-${type}`;
+  return markShadows(group);
+}
+
 export function createRoadHazard(type = 'pothole', accent = 0xffcf42) {
   const group = new THREE.Group();
   group.name = `roadHazard-${type}`;

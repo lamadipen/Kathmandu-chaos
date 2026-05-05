@@ -9,6 +9,7 @@ import {
   createPoliceAccessories,
   createPrayerFlags,
   createRoadHazard,
+  createRouteLandmark,
   createShopSign,
   createStreetProp,
   createStreetStall,
@@ -913,6 +914,8 @@ export class KathmanduChaos {
       this.scene.add(flags);
     }
 
+    this.addGameplayLandmarks();
+
     const landmarkPositions = [-this.level.length * 0.34, -this.level.length * 0.68];
     for (const [index, z] of landmarkPositions.entries()) {
       const side = index % 2 === 0 ? 1 : -1;
@@ -924,6 +927,29 @@ export class KathmanduChaos {
     }
 
     this.addStreetProps();
+  }
+
+  addGameplayLandmarks() {
+    const landmarks = this.level.landmarks ?? [];
+    for (const item of landmarks) {
+      const z = -this.level.length * item.at;
+      const landmark = createRouteLandmark(item.type, {
+        label: item.label,
+        accent: this.level.palette.accent,
+        theme: this.level.theme
+      });
+
+      if (item.type === 'gateArch' || item.type === 'riverBridge') {
+        landmark.position.set(0, 0, z);
+      } else {
+        const side = item.side ?? 1;
+        landmark.position.set(side * 22, 0, z);
+        landmark.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+        landmark.scale.setScalar(item.type === 'temple' ? 1.15 : 1);
+      }
+
+      this.scene.add(landmark);
+    }
   }
 
   getRoutePropTypes() {

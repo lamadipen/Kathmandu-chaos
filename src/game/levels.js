@@ -14,6 +14,11 @@ export const LEVELS = [
     theme: 'market',
     routeBoard: 'Ratna Park',
     signs: ['Chiya', 'Momo', 'Asan'],
+    landmarks: [
+      { type: 'busPark', label: 'Ratna Bus Park', at: 0.18, side: -1 },
+      { type: 'chowk', label: 'Asan Chowk', at: 0.54, side: 1 },
+      { type: 'gateArch', label: 'Asan Gate', at: 0.82 }
+    ],
     palette: {
       sky: 0xbfe7ff,
       fog: 0xd9f0ff,
@@ -36,6 +41,11 @@ export const LEVELS = [
     theme: 'stupa',
     routeBoard: 'Boudha',
     signs: ['Boudha', 'Thukpa', 'Thanka'],
+    landmarks: [
+      { type: 'gateArch', label: 'Boudha Gate', at: 0.2 },
+      { type: 'temple', label: 'Boudha Stupa', at: 0.5, side: 1 },
+      { type: 'chowk', label: 'Chabahil Chowk', at: 0.76, side: -1 }
+    ],
     palette: {
       sky: 0xcdeedc,
       fog: 0xe5f6e9,
@@ -58,6 +68,11 @@ export const LEVELS = [
     theme: 'durbar',
     routeBoard: 'Patan',
     signs: ['Patan', 'Crafts', 'Juju Dhau'],
+    landmarks: [
+      { type: 'gateArch', label: 'Patan Gate', at: 0.22 },
+      { type: 'chowk', label: 'Mangal Bazaar', at: 0.5, side: -1 },
+      { type: 'temple', label: 'Durbar Temple', at: 0.78, side: 1 }
+    ],
     palette: {
       sky: 0xffe4bf,
       fog: 0xffefd5,
@@ -81,6 +96,11 @@ export const LEVELS = [
     theme: 'monsoon',
     routeBoard: 'Ring Road',
     signs: ['Kalanki', 'Tyre Shop', 'Bus Stop'],
+    landmarks: [
+      { type: 'riverBridge', label: 'Bishnumati Bridge', at: 0.24 },
+      { type: 'busPark', label: 'Kalanki Stop', at: 0.52, side: -1 },
+      { type: 'gateArch', label: 'Ring Road Gate', at: 0.8 }
+    ],
     palette: {
       sky: 0x9eb7c7,
       fog: 0xcad7df,
@@ -104,6 +124,11 @@ export const LEVELS = [
     theme: 'swayambhu',
     routeBoard: 'Swayambhu',
     signs: ['Thamel', 'Swayambhu', 'Lassi'],
+    landmarks: [
+      { type: 'chowk', label: 'Thamel Chowk', at: 0.18, side: 1 },
+      { type: 'gateArch', label: 'Swayambhu Gate', at: 0.48 },
+      { type: 'temple', label: 'Hill Stupa', at: 0.76, side: -1 }
+    ],
     palette: {
       sky: 0xd7d0ff,
       fog: 0xe7e4ff,
