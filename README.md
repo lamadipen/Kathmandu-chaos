@@ -60,6 +60,7 @@ On mobile, use the on-screen controls:
 - Simple character motion for passenger waving and traffic-police hand signals
 - Combo scoring that rewards fast clean passenger pickup streaks
 - Route-specific hazards including potholes, puddles, and blocked-lane barriers
+- Route intro camera pan with countdown before player control begins
 - Time limit, health/chances, route progress, and retry flow
 - Responsive HUD and overlay UI
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares

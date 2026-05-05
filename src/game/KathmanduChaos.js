@@ -66,6 +66,7 @@ export class KathmanduChaos {
     this.nextMusicTime = 0;
     this.musicStep = 0;
     this.paused = false;
+    this.routeIntro = { active: false, age: 0, duration: 3.2 };
     this.touchInput = {
       left: false,
       right: false,
@@ -191,7 +192,21 @@ export class KathmanduChaos {
     this.pausedByOverlay = false;
     this.paused = false;
     this.running = true;
+    this.startRouteIntro();
     if (this.audio) this.nextMusicTime = this.audio.ctx.currentTime + 0.1;
+    this.clock.getDelta();
+  }
+
+  startRouteIntro() {
+    this.routeIntro = { active: true, age: 0, duration: 3.2 };
+    this.ui.routeCountdown?.classList.remove('hidden');
+    if (this.ui.routeCountdownLabel) this.ui.routeCountdownLabel.textContent = this.level.district;
+    if (this.ui.routeCountdownValue) this.ui.routeCountdownValue.textContent = '3';
+  }
+
+  finishRouteIntro() {
+    this.routeIntro.active = false;
+    this.ui.routeCountdown?.classList.add('hidden');
     this.clock.getDelta();
   }
 
@@ -595,6 +610,8 @@ export class KathmanduChaos {
     this.shake = 0;
     this.feedbackTimer = 0;
     this.passengerBarkTimer = 0;
+    this.routeIntro = { active: false, age: 0, duration: 3.2 };
+    this.ui.routeCountdown?.classList.add('hidden');
 
     this.buildWorld();
     this.buildPlayer();
@@ -931,6 +948,11 @@ export class KathmanduChaos {
 
   update(delta) {
     if (!this.running || this.pausedByOverlay) return;
+    if (this.routeIntro.active) {
+      this.updateRouteIntro(delta);
+      this.renderHud();
+      return;
+    }
 
     this.state.elapsed += delta;
     this.state.invulnerable = Math.max(0, this.state.invulnerable - delta);
@@ -979,6 +1001,27 @@ export class KathmanduChaos {
     this.world.step();
     this.updateCamera(delta);
     this.renderHud();
+  }
+
+  updateRouteIntro(delta) {
+    this.routeIntro.age += delta;
+    const t = clamp(this.routeIntro.age / this.routeIntro.duration, 0, 1);
+    const eased = 1 - (1 - t) ** 3;
+    const start = new THREE.Vector3(0, 15.5, this.player.position.z + 58);
+    const end = new THREE.Vector3(this.player.position.x * 0.38, 8.6, this.player.position.z + 15.5);
+    const lookStart = new THREE.Vector3(0, 1.8, this.player.position.z - 62);
+    const lookEnd = new THREE.Vector3(this.player.position.x * 0.2, 1.4, this.player.position.z - 18);
+    this.camera.position.lerpVectors(start, end, eased);
+    this.camera.lookAt(lookStart.lerp(lookEnd, eased));
+
+    if (this.ui.routeCountdownValue) {
+      const remaining = this.routeIntro.duration - this.routeIntro.age;
+      this.ui.routeCountdownValue.textContent = remaining <= 0.55 ? 'GO' : Math.max(1, Math.ceil(remaining - 0.55)).toString();
+    }
+
+    if (this.routeIntro.age >= this.routeIntro.duration) {
+      this.finishRouteIntro();
+    }
   }
 
   animateEntities(delta) {

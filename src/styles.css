@@ -357,6 +357,38 @@ body {
   line-height: 1.18;
 }
 
+.route-countdown {
+  position: fixed;
+  top: 49%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  min-width: 132px;
+  min-height: 132px;
+  padding: 18px;
+  border: 1px solid rgb(255 207 66 / 48%);
+  border-radius: 8px;
+  color: #f8fafc;
+  background: rgb(10 15 18 / 72%);
+  box-shadow: 0 22px 60px rgb(0 0 0 / 34%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  backdrop-filter: blur(16px);
+}
+
+.route-countdown span {
+  color: #ffcf42;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.route-countdown strong {
+  font-size: 4rem;
+  line-height: 0.95;
+  text-shadow: 0 8px 24px rgb(0 0 0 / 34%);
+}
+
 .screen-flash {
   position: fixed;
   inset: 0;
@@ -978,6 +1010,15 @@ button:focus-visible {
 
   .passenger-bark strong {
     font-size: 0.88rem;
+  }
+
+  .route-countdown {
+    min-width: 104px;
+    min-height: 104px;
+  }
+
+  .route-countdown strong {
+    font-size: 3.1rem;
   }
 
   .minimap {

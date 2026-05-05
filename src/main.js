@@ -77,6 +77,9 @@ const game = new KathmanduChaos({
     feedback: document.querySelector('#feedback'),
     passengerBark: document.querySelector('#passengerBark'),
     passengerBarkText: document.querySelector('#passengerBarkText'),
+    routeCountdown: document.querySelector('#routeCountdown'),
+    routeCountdownLabel: document.querySelector('#routeCountdownLabel'),
+    routeCountdownValue: document.querySelector('#routeCountdownValue'),
     screenFlash: document.querySelector('#screenFlash'),
     speedLines: document.querySelector('#speedLines')
   }
