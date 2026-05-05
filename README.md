@@ -71,6 +71,7 @@ On mobile, use the on-screen controls:
 - Garage tempo skins with fare-bank unlocks and saved selection
 - Route mastery tracking with saved stars, best fares, route status, and unlock hints
 - Starter GLB character models with Nepali accessory overlays for passengers and traffic police
+- Route-specific passenger personality barks for commuters, students, vendors, tourists, and elders
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout
 - Floating 3D score popups for passenger fares, combo bonuses, hazards, and collisions

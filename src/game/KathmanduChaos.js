@@ -27,15 +27,60 @@ const obstacleNames = {
   cyclist: 'cyclist',
   police: 'traffic police'
 };
-const passengerBarks = [
-  'Asan samma, dai!',
+const sharedPassengerBarks = [
   'Bistarai hai, hajur.',
-  'School pugnu cha, chito!',
-  'Momo pasal agadi rokdinus.',
-  'Ratna Park jane ho?',
   'Jam cha, horn bajau!',
   'Didi, yo side ma rokdinus.',
   'Dhanyabad, Maya didi!'
+];
+const routePassengerBarks = {
+  market: [
+    'Asan chowk samma, dai!',
+    'Chiya pasal agadi rokdinus.',
+    'Momo ko jhola cha, bistarai!',
+    'Office pugnu cha, chito!',
+    'Ratna Park bata Asan jane ho?',
+    'Tarkari bazaar side ma rokdinus.'
+  ],
+  stupa: [
+    'Boudha gate samma, hajur.',
+    'Stupa ghumera hotel jane ho.',
+    'Thanka pasal agadi rokdinus.',
+    'Bell bajyo, bistarai chalnus.',
+    'Tourist lai pick garnu cha.',
+    'Chabahil chowk ma left hai.'
+  ],
+  durbar: [
+    'Mangal Bazaar samma, dai!',
+    'Patan Durbar side ma rokdinus.',
+    'Crafts ko saman cha, jhatka nagarnus.',
+    'Juju Dhau lina park garnus.',
+    'Galli sano cha, bistarai.',
+    'Rato mato bato, careful hai.'
+  ],
+  monsoon: [
+    'Pani paryo, chito tara bistarai!',
+    'Kalanki stop samma, hajur.',
+    'Puddle bata bachnus hai.',
+    'Umbrella bhijyo, bus park rokdinus.',
+    'Ring Road jam cha, horn dinus.',
+    'Bridge cross garda slow hai.'
+  ],
+  swayambhu: [
+    'Swayambhu gate samma, dai!',
+    'Ukalai cha, battery bachnus.',
+    'Lassi pasal agadi rokdinus.',
+    'Thamel bata stupa jane ho.',
+    'Permit inspector parkhera cha!',
+    'Prayer flags pachi right hai.'
+  ]
+};
+const passengerPersonalities = [
+  { id: 'commuter', prefix: 'Commuter', fareBonus: 0 },
+  { id: 'student', prefix: 'Student', fareBonus: 8 },
+  { id: 'vendor', prefix: 'Vendor', fareBonus: 12 },
+  { id: 'tourist', prefix: 'Tourist', fareBonus: 15 },
+  { id: 'elder', prefix: 'Elder', fareBonus: 10 }
 ];
 const progressKey = 'kathmandu-chaos-progress-v1';
 const upgradeConfig = {
@@ -1131,9 +1176,15 @@ export class KathmanduChaos {
       const lane = choice([LANES[0], LANES[4]]);
       const z = -spacing * (i + 0.75) + rand(-12, 12);
       const passenger = this.createPassenger(lane, z, i);
-      this.pickups.push({ mesh: passenger, collected: false, z, x: lane, index: i, value: 120 + i * 15 });
+      const personality = this.getPassengerPersonality(i);
+      this.pickups.push({ mesh: passenger, collected: false, z, x: lane, index: i, personality, value: 120 + i * 15 + personality.fareBonus });
       this.spawnedSlots.push({ x: lane, z, radius: 10 });
     }
+  }
+
+  getPassengerPersonality(index) {
+    const routeShift = this.levelIndex * 2;
+    return passengerPersonalities[(index + routeShift) % passengerPersonalities.length];
   }
 
   createPassenger(x, z, index) {
@@ -1522,8 +1573,12 @@ export class KathmanduChaos {
   }
 
   getPassengerBark(pickup) {
-    const routeOffset = this.levelIndex * 2;
-    return passengerBarks[(pickup.index + routeOffset) % passengerBarks.length];
+    const routeLines = routePassengerBarks[this.level.theme] ?? sharedPassengerBarks;
+    const sharedLine = sharedPassengerBarks[(pickup.index + this.levelIndex) % sharedPassengerBarks.length];
+    const linePool = pickup.index % 3 === 2 ? [...routeLines, sharedLine] : routeLines;
+    const line = linePool[(pickup.index + this.levelIndex) % linePool.length];
+    const speaker = pickup.personality?.prefix ?? this.getPassengerPersonality(pickup.index).prefix;
+    return `${speaker}: ${line}`;
   }
 
   awardPickupFare(pickup) {
