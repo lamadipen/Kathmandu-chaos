@@ -70,11 +70,13 @@ On mobile, use the on-screen controls:
 - Upgradeable tempo stats for battery, brakes, and handling
 - Garage tempo skins with fare-bank unlocks and saved selection
 - Route mastery tracking with saved stars, best fares, route status, and unlock hints
+- Tuned 5-route difficulty curve for time limits, traffic density, hazards, and optional bonus rewards
 - Starter GLB character models with Nepali accessory overlays for passengers and traffic police
 - Route-specific passenger personality barks for commuters, students, vendors, tourists, and elders
 - Passenger callout bubbles and approach barks so waiting customers actively call for the tempo
 - Route intro camera labels that spotlight key landmarks before the run starts
 - Optional landmark bonus objectives that award extra fare without blocking route completion
+- Main title/story sequence that frames Maya's permit run before entering the garage
 - Route visual polish with color grading, route-specific lighting, stronger silhouettes, and readable landmark accents
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout
@@ -84,6 +86,7 @@ On mobile, use the on-screen controls:
 - Gameplay-readable route landmarks including temples, chowks, bus parks, river bridges, and gate arches
 - Traffic variety with cars, buses, taxis, and scooters
 - Light AI traffic behavior with consistent forward movement, lane drift, braking around nearby vehicles, and horn reactions
+- Paced moving-traffic spawning with lane-aware gaps to reduce unfair clusters
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 - Route-specific ambient sounds for rain, market texture, temple bells, and police whistles

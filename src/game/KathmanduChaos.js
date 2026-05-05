@@ -169,6 +169,7 @@ export class KathmanduChaos {
     this.entities = [];
     this.pickups = [];
     this.hazards = [];
+    this.trafficLaneSlots = new Map();
     this.effects = [];
     this.weather = null;
     this.running = false;
@@ -208,7 +209,7 @@ export class KathmanduChaos {
     window.addEventListener('resize', () => this.resize());
     this.setupGarage();
     this.loadLevel(0, { showIntro: false });
-    this.showGarage();
+    this.showTitleMenu();
     this.animate();
   }
 
@@ -301,12 +302,30 @@ export class KathmanduChaos {
     this.running = false;
     this.pausedByOverlay = true;
     this.paused = false;
+    if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = 'Tempo mission';
+    if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = 'Kathmandu Chaos';
     this.ui.overlay.classList.add('hidden');
     this.ui.pauseMenu?.classList.add('hidden');
     this.ui.resultsMenu?.classList.add('hidden');
     this.ui.garage.classList.remove('hidden');
     this.selectRoute(Math.min(this.selectedRoute, this.progress.unlocked));
     this.renderGarage();
+  }
+
+  showTitleMenu() {
+    const cleared = Object.values(this.progress.bestScores ?? {}).filter((score) => Number(score) > 0).length;
+    const story = [
+      'Maya Lama has one morning to save her family tempo permit.',
+      'Kathmandu is already awake: office crowds at Ratna Park, bells near Boudha, brick alleys in Patan, monsoon traffic on Ring Road, and the final climb to Swayambhu.',
+      'Pick up passengers, read the landmarks, earn bonus fares, and keep the little green tempo moving.'
+    ].join(' ');
+
+    if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = cleared > 0 ? `${cleared}/${LEVELS.length} routes cleared` : 'Story mode';
+    if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = 'Kathmandu Chaos';
+    this.showOverlay(story, 'Enter garage', () => this.showGarage(), {
+      label: this.progress.unlocked > 0 ? 'Continue route' : 'Start first route',
+      action: () => this.startRoute(Math.min(this.selectedRoute, this.progress.unlocked))
+    });
   }
 
   hideGarage() {
@@ -1520,7 +1539,9 @@ export class KathmanduChaos {
     const start = -55;
     const end = -this.level.length + 60;
     for (let i = 0; i < count; i += 1) {
-      const { x, z } = this.findObstacleSlot(start, end, type);
+      const { x, z } = this.isMovingTrafficType(type)
+        ? this.findPacedTrafficSlot(start, end, type, i, count)
+        : this.findObstacleSlot(start, end, type);
       const variant = type === 'car' ? i : 0;
       const mesh = this.createObstacleMesh(type, variant);
       mesh.position.set(x, 0.6, z);
@@ -1552,6 +1573,62 @@ export class KathmanduChaos {
       });
       this.spawnedSlots.push({ x, z, radius: type === 'police' ? 13 : 9 });
     }
+  }
+
+  isMovingTrafficType(type) {
+    return type === 'car' || type === 'cyclist' || type === 'cow';
+  }
+
+  findPacedTrafficSlot(start, end, type, index, count) {
+    const minGap = this.getTrafficSpawnGap(type);
+    const lanePool = this.getTrafficLanePool(type);
+    const span = Math.abs(end - start);
+    const segment = span / Math.max(1, count);
+    const baseZ = start - segment * (index + 0.5);
+
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      const laneIndex = (index + attempt * 2 + Math.floor(attempt / lanePool.length)) % lanePool.length;
+      const x = lanePool[laneIndex];
+      const jitter = rand(-segment * 0.34, segment * 0.34);
+      const z = clamp(baseZ + jitter + Math.sin(index * 1.7 + attempt) * 4, end, start);
+      if (this.isTrafficSlotClear(x, z, type, minGap)) {
+        this.reserveTrafficLaneSlot(x, z, minGap);
+        return { x, z };
+      }
+    }
+
+    const fallback = this.findObstacleSlot(start, end, type);
+    this.reserveTrafficLaneSlot(fallback.x, fallback.z, minGap);
+    return fallback;
+  }
+
+  getTrafficSpawnGap(type) {
+    if (type === 'cyclist') return 18;
+    if (type === 'cow') return 24;
+    return 28;
+  }
+
+  getTrafficLanePool(type) {
+    if (type === 'cow') return LANES;
+    if (type === 'cyclist') return [LANES[0], LANES[1], LANES[3], LANES[4]];
+    return LANES.slice(1, -1);
+  }
+
+  isTrafficSlotClear(x, z, type, minGap) {
+    const blocked = this.spawnedSlots.some((slot) => Math.abs(slot.z - z) < slot.radius + minGap && Math.abs(slot.x - x) < 2.3);
+    if (blocked) return false;
+
+    const nearPassenger = this.pickups.some((pickup) => Math.abs(pickup.z - z) < 18 && Math.abs(pickup.x - x) < 3.4);
+    if (nearPassenger) return false;
+
+    const laneSlots = this.trafficLaneSlots.get(x) ?? [];
+    return laneSlots.every((slot) => Math.abs(slot.z - z) > slot.gap + minGap);
+  }
+
+  reserveTrafficLaneSlot(x, z, gap) {
+    const laneSlots = this.trafficLaneSlots.get(x) ?? [];
+    laneSlots.push({ z, gap });
+    this.trafficLaneSlots.set(x, laneSlots);
   }
 
   getTrafficAiProfile(type, variant = 0) {
@@ -2519,6 +2596,8 @@ export class KathmanduChaos {
   }
 
   showIntro() {
+    if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = 'Tempo mission';
+    if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = this.level.name;
     this.showOverlay(this.level.story, this.levelIndex === 0 ? 'Start route' : 'Drive route', () => {
       this.ensureAudio();
       this.ui.overlay.classList.add('hidden');

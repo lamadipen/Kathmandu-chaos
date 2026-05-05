@@ -5,6 +5,8 @@ const game = new KathmanduChaos({
   canvas: document.querySelector('#game'),
   ui: {
     overlay: document.querySelector('#overlay'),
+    overlayKicker: document.querySelector('#overlayKicker'),
+    overlayTitle: document.querySelector('#overlayTitle'),
     overlayText: document.querySelector('#overlayText'),
     startButton: document.querySelector('#startButton'),
     secondaryButton: document.querySelector('#secondaryButton'),
