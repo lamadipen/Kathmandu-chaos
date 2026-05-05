@@ -574,6 +574,10 @@ export class KathmanduChaos {
       invulnerable: 0,
       pickupAssist: 0,
       passengerFare: 0,
+      combo: 1,
+      comboTimer: 0,
+      comboBonus: 0,
+      maxCombo: 1,
       collisionPenalty: 0,
       collisions: 0,
       finished: false
@@ -892,6 +896,10 @@ export class KathmanduChaos {
     this.state.invulnerable = Math.max(0, this.state.invulnerable - delta);
     this.feedbackTimer = Math.max(0, this.feedbackTimer - delta);
     this.passengerBarkTimer = Math.max(0, this.passengerBarkTimer - delta);
+    this.state.comboTimer = Math.max(0, this.state.comboTimer - delta);
+    if (this.state.comboTimer <= 0 && this.state.combo > 1) {
+      this.state.combo = 1;
+    }
     this.shake = Math.max(0, this.shake - delta);
 
     const nearbyPickup = this.getNearbyPickup();
@@ -1018,6 +1026,28 @@ export class KathmanduChaos {
     return passengerBarks[(pickup.index + routeOffset) % passengerBarks.length];
   }
 
+  awardPickupFare(pickup) {
+    const quickPickup = this.state.passengers > 0 && this.state.comboTimer > 0;
+    if (quickPickup) {
+      this.state.combo = Math.min(5, this.state.combo + 1);
+    } else {
+      this.state.combo = 1;
+    }
+    this.state.comboTimer = 8;
+    this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
+
+    const comboBonus = this.state.combo > 1 ? Math.round(pickup.value * (this.state.combo - 1) * 0.22) : 0;
+    this.state.passengerFare += pickup.value;
+    this.state.comboBonus += comboBonus;
+    this.state.score += pickup.value + comboBonus;
+    return comboBonus;
+  }
+
+  resetCombo() {
+    this.state.combo = 1;
+    this.state.comboTimer = 0;
+  }
+
   flashHit() {
     if (!this.ui.screenFlash) return;
     this.ui.screenFlash.classList.add('hit');
@@ -1122,16 +1152,16 @@ export class KathmanduChaos {
       const dz = Math.abs(this.player.position.z - pickup.mesh.position.z);
       if (dx < 2.15 && dz < 3.1) {
         pickup.collected = true;
+        const comboBonus = this.awardPickupFare(pickup);
         this.state.passengers += 1;
-        this.state.passengerFare += pickup.value;
-        this.state.score += pickup.value;
         this.state.speed = Math.max(5, this.state.speed * 0.72);
         this.spawnPickupBurst(pickup.mesh.position);
         this.spawnBoardingEffect(pickup);
         this.playPickupSound();
         this.playPassengerBarkSound(pickup.index);
         this.showPassengerBark(this.getPassengerBark(pickup));
-        this.showFeedback(`Passenger boarded +${pickup.value}`, 'good');
+        const comboText = comboBonus > 0 ? ` x${this.state.combo} combo +${comboBonus}` : '';
+        this.showFeedback(`Passenger boarded +${pickup.value}${comboText}`, 'good');
       }
     }
   }
@@ -1149,6 +1179,7 @@ export class KathmanduChaos {
         this.state.collisionPenalty += penalty;
         this.state.collisions += 1;
         this.state.score = Math.max(0, this.state.score - penalty);
+        this.resetCombo();
         this.state.speed = Math.max(5, this.state.speed * 0.45);
         this.state.invulnerable = 1.2;
         this.shake = entity.type === 'police' ? 0.45 : 0.3;
@@ -1188,7 +1219,7 @@ export class KathmanduChaos {
     const timeRemaining = Math.max(0, this.level.timeLimit - this.state.elapsed);
     const timeBonus = completed ? Math.round(timeRemaining * 10) : 0;
     const cleanBonus = completed && this.state.collisions === 0 ? 220 : completed && this.state.collisions <= 1 ? 90 : 0;
-    const finalFare = Math.max(0, this.state.passengerFare + timeBonus + cleanBonus - this.state.collisionPenalty);
+    const finalFare = Math.max(0, this.state.passengerFare + this.state.comboBonus + timeBonus + cleanBonus - this.state.collisionPenalty);
     const passengerRatio = this.state.passengers / this.level.passengerGoal;
     let stars = 0;
     if (completed) {
@@ -1203,6 +1234,7 @@ export class KathmanduChaos {
       routeName: this.level.name,
       finalFare,
       passengerFare: this.state.passengerFare,
+      comboBonus: this.state.comboBonus,
       timeBonus,
       cleanBonus,
       collisionPenalty: this.state.collisionPenalty,
@@ -1210,6 +1242,7 @@ export class KathmanduChaos {
       passengerGoal: this.level.passengerGoal,
       timeRemaining: Math.round(timeRemaining),
       collisions: this.state.collisions,
+      maxCombo: this.state.maxCombo,
       stars,
       oldBest,
       newBest: Math.max(oldBest, finalFare),
@@ -1243,6 +1276,7 @@ export class KathmanduChaos {
     this.ui.resultsPassengerFare.textContent = result.passengerFare.toString();
     this.ui.resultsTimeBonus.textContent = result.timeBonus.toString();
     this.ui.resultsCleanBonus.textContent = result.cleanBonus.toString();
+    if (this.ui.resultsComboBonus) this.ui.resultsComboBonus.textContent = result.comboBonus.toString();
     this.ui.resultsPenalty.textContent = result.collisionPenalty ? `-${result.collisionPenalty}` : '0';
     this.ui.resultsPassengers.textContent = `${result.passengers}/${result.passengerGoal}`;
     this.ui.resultsBest.textContent = result.newBest.toString();
@@ -1259,6 +1293,7 @@ export class KathmanduChaos {
   }
 
   getResultSummary(result) {
+    if (result.completed && result.maxCombo >= 4) return `Route cleared with a x${result.maxCombo} pickup streak. Maya kept the fare meter hot.`;
     if (result.stars === 3) return `Perfect tempo work. ${result.timeRemaining}s left, no collisions, and a clean fare bank run.`;
     if (result.stars === 2) return `Good route. ${result.timeRemaining}s left with ${result.collisions} collision${result.collisions === 1 ? '' : 's'}.`;
     return `Route cleared. Upgrade the tempo or replay for a cleaner, faster fare.`;
@@ -1281,6 +1316,8 @@ export class KathmanduChaos {
     this.ui.passengers.textContent = `${this.state.passengers}/${this.level.passengerGoal}`;
     this.ui.time.textContent = Math.max(0, Math.ceil(this.level.timeLimit - this.state.elapsed)).toString();
     this.ui.hearts.textContent = Math.max(0, this.state.hearts).toString();
+    if (this.ui.combo) this.ui.combo.textContent = `x${this.state.combo}`;
+    if (this.ui.comboMeter) this.ui.comboMeter.classList.toggle('active', this.state.combo > 1);
     this.ui.progressBar.style.width = `${progress * 100}%`;
     if (this.ui.speedLines) {
       this.ui.speedLines.style.opacity = `${clamp((this.state.speed - 16) / 18, 0, 0.42)}`;

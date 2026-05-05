@@ -63,9 +63,9 @@ body {
 
 .meters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(66px, 1fr));
+  grid-template-columns: repeat(5, minmax(62px, 1fr));
   gap: 8px;
-  width: min(460px, 52vw);
+  width: min(560px, 58vw);
 }
 
 .meters div,
@@ -81,6 +81,20 @@ body {
   min-height: 62px;
   border-radius: 8px;
   padding: 10px 12px;
+}
+
+.meters div.combo-meter {
+  border-color: rgb(255 207 66 / 42%);
+}
+
+.meters div.combo-meter.active {
+  background: rgb(255 207 66 / 88%);
+  color: #111814;
+  transform: translateY(-2px);
+}
+
+.meters div.combo-meter.active span {
+  color: #3a2b00;
 }
 
 .meters strong {
@@ -921,7 +935,7 @@ button:focus-visible {
 
   .meters {
     width: 100%;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .meters div {

@@ -58,6 +58,7 @@ On mobile, use the on-screen controls:
 - Passenger pickup barks with short Nepali-flavored lines and voice chirps
 - Boarding animation where collected passengers hop/fade into the tempo
 - Simple character motion for passenger waving and traffic-police hand signals
+- Combo scoring that rewards fast clean passenger pickup streaks
 - Time limit, health/chances, route progress, and retry flow
 - Responsive HUD and overlay UI
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
@@ -104,6 +105,7 @@ Scoring includes:
 
 - Passenger fare
 - Time bonus
+- Combo bonus
 - Clean driving bonus
 - Collision penalty
 - Final fare
