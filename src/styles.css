@@ -290,6 +290,59 @@ body {
   background: #7bed9f;
 }
 
+.passenger-bark {
+  position: fixed;
+  top: 218px;
+  left: 50%;
+  display: grid;
+  gap: 3px;
+  width: min(340px, calc(100vw - 36px));
+  min-height: 58px;
+  padding: 10px 14px 11px;
+  border: 1px solid rgb(255 207 66 / 48%);
+  border-radius: 8px;
+  color: #f8fafc;
+  background: rgb(12 17 18 / 82%);
+  box-shadow: 0 16px 42px rgb(0 0 0 / 26%);
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+}
+
+.passenger-bark::after {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 14px;
+  height: 14px;
+  border-right: 1px solid rgb(255 207 66 / 48%);
+  border-bottom: 1px solid rgb(255 207 66 / 48%);
+  background: rgb(12 17 18 / 82%);
+  content: "";
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.passenger-bark.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.passenger-bark span {
+  color: #ffcf42;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.passenger-bark strong {
+  overflow-wrap: anywhere;
+  font-size: 0.98rem;
+  line-height: 1.18;
+}
+
 .screen-flash {
   position: fixed;
   inset: 0;
@@ -901,6 +954,16 @@ button:focus-visible {
     max-width: calc(100vw - 24px);
     font-size: 0.82rem;
     text-align: center;
+  }
+
+  .passenger-bark {
+    top: 194px;
+    min-height: 52px;
+    padding: 9px 12px 10px;
+  }
+
+  .passenger-bark strong {
+    font-size: 0.88rem;
   }
 
   .minimap {

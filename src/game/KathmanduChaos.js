@@ -23,6 +23,16 @@ const obstacleNames = {
   cyclist: 'cyclist',
   police: 'traffic police'
 };
+const passengerBarks = [
+  'Asan samma, dai!',
+  'Bistarai hai, hajur.',
+  'School pugnu cha, chito!',
+  'Momo pasal agadi rokdinus.',
+  'Ratna Park jane ho?',
+  'Jam cha, horn bajau!',
+  'Didi, yo side ma rokdinus.',
+  'Dhanyabad, Maya didi!'
+];
 const progressKey = 'kathmandu-chaos-progress-v1';
 const upgradeConfig = {
   battery: { base: 72, step: 8, cost: 550 },
@@ -44,6 +54,7 @@ export class KathmanduChaos {
     this.pausedByOverlay = true;
     this.audio = null;
     this.feedbackTimer = 0;
+    this.passengerBarkTimer = 0;
     this.shake = 0;
     this.selectedRoute = 0;
     this.progress = this.loadProgress();
@@ -530,6 +541,13 @@ export class KathmanduChaos {
     this.playTone(990, 0.12, 'triangle', 0.2, 0.08);
   }
 
+  playPassengerBarkSound(index = 0) {
+    const base = 280 + (index % 4) * 34;
+    this.playTone(base, 0.055, 'triangle', 0.07);
+    this.playTone(base + 90, 0.065, 'triangle', 0.06, 0.07);
+    this.playTone(base + 38, 0.055, 'triangle', 0.05, 0.15);
+  }
+
   playHitSound(type) {
     if (type === 'police') {
       this.playTone(1400, 0.11, 'square', 0.16);
@@ -568,6 +586,7 @@ export class KathmanduChaos {
     this.spawnedSlots = [];
     this.shake = 0;
     this.feedbackTimer = 0;
+    this.passengerBarkTimer = 0;
 
     this.buildWorld();
     this.buildPlayer();
@@ -727,7 +746,7 @@ export class KathmanduChaos {
       const lane = choice([LANES[0], LANES[4]]);
       const z = -spacing * (i + 0.75) + rand(-12, 12);
       const passenger = this.createPassenger(lane, z, i);
-      this.pickups.push({ mesh: passenger, collected: false, z, x: lane, value: 120 + i * 15 });
+      this.pickups.push({ mesh: passenger, collected: false, z, x: lane, index: i, value: 120 + i * 15 });
       this.spawnedSlots.push({ x: lane, z, radius: 10 });
     }
   }
@@ -836,6 +855,7 @@ export class KathmanduChaos {
     this.state.elapsed += delta;
     this.state.invulnerable = Math.max(0, this.state.invulnerable - delta);
     this.feedbackTimer = Math.max(0, this.feedbackTimer - delta);
+    this.passengerBarkTimer = Math.max(0, this.passengerBarkTimer - delta);
     this.shake = Math.max(0, this.shake - delta);
 
     const nearbyPickup = this.getNearbyPickup();
@@ -931,6 +951,20 @@ export class KathmanduChaos {
     this.feedbackTimer = 1.2;
   }
 
+  showPassengerBark(message) {
+    if (!this.ui.passengerBark || !this.ui.passengerBarkText) return;
+    this.ui.passengerBarkText.textContent = message;
+    this.ui.passengerBark.classList.remove('show');
+    void this.ui.passengerBark.offsetWidth;
+    this.ui.passengerBark.classList.add('show');
+    this.passengerBarkTimer = 2.25;
+  }
+
+  getPassengerBark(pickup) {
+    const routeOffset = this.levelIndex * 2;
+    return passengerBarks[(pickup.index + routeOffset) % passengerBarks.length];
+  }
+
   flashHit() {
     if (!this.ui.screenFlash) return;
     this.ui.screenFlash.classList.add('hit');
@@ -983,6 +1017,8 @@ export class KathmanduChaos {
         this.state.speed = Math.max(5, this.state.speed * 0.72);
         this.spawnPickupBurst(pickup.mesh.position);
         this.playPickupSound();
+        this.playPassengerBarkSound(pickup.index);
+        this.showPassengerBark(this.getPassengerBark(pickup));
         this.showFeedback(`Passenger boarded +${pickup.value}`, 'good');
       }
     }
@@ -1139,6 +1175,9 @@ export class KathmanduChaos {
     }
     if (this.ui.feedback && this.feedbackTimer <= 0) {
       this.ui.feedback.classList.remove('show');
+    }
+    if (this.ui.passengerBark && this.passengerBarkTimer <= 0) {
+      this.ui.passengerBark.classList.remove('show');
     }
     this.renderTargetGuide();
     this.renderMinimap();

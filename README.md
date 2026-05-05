@@ -54,6 +54,7 @@ On mobile, use the on-screen controls:
 - Yellow pickup rings and floating passenger markers
 - Target guide with distance and direction
 - Pickup chimes, collision feedback, screen flash, camera shake, and speed-line cues
+- Passenger pickup barks with short Nepali-flavored lines and voice chirps
 - Time limit, health/chances, route progress, and retry flow
 - Responsive HUD and overlay UI
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
