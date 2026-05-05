@@ -941,11 +941,28 @@ export class KathmanduChaos {
       if (entity.type === 'cow') {
         entity.mesh.rotation.y = Math.sin(this.state.elapsed * 1.6 + entity.wobble) * 0.18;
       }
+      if (entity.type === 'police') {
+        const signalArm = entity.mesh.getObjectByName('trafficSignalArm');
+        if (signalArm) {
+          signalArm.rotation.z = -0.72 + Math.sin(this.state.elapsed * 3.4 + entity.wobble) * 0.46;
+          signalArm.rotation.x = Math.sin(this.state.elapsed * 2.2 + entity.wobble) * 0.12;
+        }
+        const baton = entity.mesh.getObjectByName('trafficBaton');
+        if (baton) {
+          baton.rotation.z = Math.sin(this.state.elapsed * 2.7 + entity.wobble) * 0.18;
+        }
+      }
     }
     for (const pickup of this.pickups) {
       if (!pickup.collected) {
         pickup.mesh.rotation.y += delta * 1.8;
         pickup.mesh.position.y = Math.sin(this.state.elapsed * 4 + pickup.z) * 0.08;
+        const hand = pickup.mesh.getObjectByName('wavingPassengerHand');
+        if (hand) {
+          const side = hand.position.x >= 0 ? 1 : -1;
+          hand.rotation.z = side * (-0.34 + Math.sin(this.state.elapsed * 5.4 + pickup.index) * 0.42);
+          hand.rotation.x = Math.sin(this.state.elapsed * 4.2 + pickup.index) * 0.16;
+        }
         const marker = pickup.mesh.getObjectByName('pickupMarker');
         if (marker) {
           const pulse = 1 + Math.sin(this.state.elapsed * 5 + pickup.z) * 0.1;

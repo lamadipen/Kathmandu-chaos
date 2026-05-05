@@ -108,6 +108,27 @@ export function createTempo(routeLabel = 'Ratna Park') {
   return markShadows(group);
 }
 
+function addWavingHand(group, skinMaterial, sleeveMaterial, side = 1) {
+  const hand = new THREE.Group();
+  hand.name = 'wavingPassengerHand';
+  hand.position.set(side * 0.34, 0.86, -0.12);
+  hand.rotation.z = side * -0.42;
+  hand.add(mesh(new THREE.BoxGeometry(0.1, 0.46, 0.1), sleeveMaterial, [0, 0.2, 0], [0, 0, side * -0.08]));
+  hand.add(mesh(new THREE.SphereGeometry(0.09, 10, 8), skinMaterial, [0, 0.48, 0]));
+  group.add(hand);
+}
+
+function addTrafficSignalArm(group) {
+  const arm = new THREE.Group();
+  arm.name = 'trafficSignalArm';
+  arm.position.set(0.5, 0.92, -0.1);
+  arm.rotation.z = -0.58;
+  arm.add(mesh(new THREE.BoxGeometry(0.1, 0.72, 0.1), mat(0xffffff), [0, 0.3, 0]));
+  arm.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.72, 10), mat(0xd94848), [0.04, 0.72, 0], [0, 0, -0.1]));
+  arm.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.28, 10), mat(0xffffff), [0.07, 1.06, 0], [0, 0, -0.1]));
+  group.add(arm);
+}
+
 export function createPassenger(index = 0) {
   const group = new THREE.Group();
   const variant = index % 5;
@@ -139,6 +160,8 @@ export function createPassenger(index = 0) {
   for (const x of [-0.18, 0.18]) {
     group.add(mesh(new THREE.BoxGeometry(0.1, 0.5, 0.12), dark, [x, 0.05, 0]));
   }
+
+  addWavingHand(group, skin, cloth, index % 2 === 0 ? 1 : -1);
 
   const marker = new THREE.Group();
   marker.name = 'pickupMarker';
@@ -203,8 +226,8 @@ function createTrafficPolice() {
   group.add(mesh(new THREE.BoxGeometry(0.72, 0.5, 0.05), vest, [0, 0.68, -0.26]));
   group.add(mesh(new THREE.SphereGeometry(0.24, 16, 12), mat(0xb9784d), [0, 1.24, 0]));
   group.add(mesh(new THREE.BoxGeometry(0.8, 0.18, 0.5), white, [0, 1.48, 0]));
-  group.add(mesh(new THREE.BoxGeometry(0.1, 0.72, 0.1), white, [0.58, 0.98, -0.08], [0, 0, -0.7]));
   group.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.3, 10), mat(0xd94848), [-0.68, 0.15, -0.2], [0, 0, 0.28]));
+  addTrafficSignalArm(group);
   return markShadows(group);
 }
 
@@ -272,6 +295,7 @@ export function createPassengerAccessories(index = 0) {
     addSchoolBag(group, 0x8f3f2d);
   }
 
+  addWavingHand(group, mat(0xb9784d), mat(0xffcf42), index % 2 === 0 ? 1 : -1);
   return markShadows(group);
 }
 
@@ -281,6 +305,7 @@ export function createPoliceAccessories() {
   addPoliceVest(group);
   addDhakaTopi(group, 1.58, 0xffffff);
   addPoliceBaton(group);
+  addTrafficSignalArm(group);
   return markShadows(group);
 }
 

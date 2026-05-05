@@ -57,6 +57,7 @@ On mobile, use the on-screen controls:
 - Pickup chimes, collision feedback, screen flash, camera shake, and speed-line cues
 - Passenger pickup barks with short Nepali-flavored lines and voice chirps
 - Boarding animation where collected passengers hop/fade into the tempo
+- Simple character motion for passenger waving and traffic-police hand signals
 - Time limit, health/chances, route progress, and retry flow
 - Responsive HUD and overlay UI
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
