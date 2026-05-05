@@ -71,6 +71,7 @@ On mobile, use the on-screen controls:
 - Garage tempo skins with fare-bank unlocks and saved selection
 - Starter GLB character models with Nepali accessory overlays for passengers and traffic police
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
+- End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 

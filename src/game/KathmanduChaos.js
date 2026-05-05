@@ -1451,6 +1451,7 @@ export class KathmanduChaos {
     this.progress.bestScores[this.levelIndex] = result.newBest;
     this.progress.wallet += result.finalFare;
     if (result.unlockedNext) this.progress.unlocked += 1;
+    result.walletAfter = this.progress.wallet;
     this.saveProgress();
   }
 
@@ -1470,6 +1471,7 @@ export class KathmanduChaos {
       ? this.getResultSummary(result)
       : `${result.failReason} Collect enough passengers and protect the tempo.`;
     this.ui.resultsFinalFare.textContent = result.finalFare.toString();
+    this.renderRewardBadges(result);
     this.ui.resultsPassengerFare.textContent = result.passengerFare.toString();
     this.ui.resultsTimeBonus.textContent = result.timeBonus.toString();
     this.ui.resultsCleanBonus.textContent = result.cleanBonus.toString();
@@ -1487,6 +1489,36 @@ export class KathmanduChaos {
       this.ui.resultsPrimary.onclick = () => this.showGarage();
     }
     this.ui.resultsMenu.classList.remove('hidden');
+  }
+
+  renderRewardBadges(result) {
+    if (!this.ui.rewardBadges) return;
+    const badges = this.getRewardBadges(result);
+    this.ui.rewardBadges.innerHTML = badges.map((badge) => `
+      <div class="reward-badge ${badge.tone}">
+        <i>${badge.icon}</i>
+        <div><strong>${badge.title}</strong><span>${badge.detail}</span></div>
+      </div>
+    `).join('');
+  }
+
+  getRewardBadges(result) {
+    if (!result.completed) {
+      return [
+        { icon: '!', tone: 'bad', title: 'Route Failed', detail: 'Retry to protect the permit.' },
+        { icon: '$', tone: 'bad', title: 'No Payout', detail: 'Finish the route to bank fare.' }
+      ];
+    }
+
+    const badges = [
+      { icon: '$', tone: 'good', title: `+${result.finalFare} Fare`, detail: `Fare bank ${result.walletAfter ?? this.progress.wallet}` }
+    ];
+    if (result.finalFare > result.oldBest) badges.push({ icon: '*', tone: 'good', title: 'New Best Fare', detail: `${result.oldBest} -> ${result.finalFare}` });
+    if (result.unlockedNext) badges.push({ icon: '>', tone: 'good', title: 'New Route', detail: LEVELS[this.levelIndex + 1].name });
+    if (result.stars === 3) badges.push({ icon: '3', tone: 'good', title: 'Three-Star Run', detail: 'Fast and clean.' });
+    if (result.collisions === 0) badges.push({ icon: 'C', tone: 'good', title: 'Clean Driving', detail: `+${result.cleanBonus} clean bonus` });
+    if (result.maxCombo >= 3) badges.push({ icon: 'x', tone: 'good', title: `x${result.maxCombo} Combo`, detail: `+${result.comboBonus} combo fare` });
+    return badges;
   }
 
   getResultSummary(result) {

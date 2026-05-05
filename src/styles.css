@@ -935,6 +935,63 @@ h1 {
   line-height: 1;
 }
 
+.reward-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+.reward-badge {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-width: min(210px, 100%);
+  padding: 9px 10px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.reward-badge i {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #111814;
+  background: #ffcf42;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.reward-badge strong,
+.reward-badge span {
+  display: block;
+  line-height: 1.1;
+}
+
+.reward-badge strong {
+  font-size: 0.82rem;
+}
+
+.reward-badge span {
+  margin-top: 3px;
+  color: #cbd5dd;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.reward-badge.good i {
+  background: #7bed9f;
+}
+
+.reward-badge.bad i {
+  color: #ffffff;
+  background: #d94848;
+}
+
 .results-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -40,6 +40,7 @@ const game = new KathmanduChaos({
     resultsStars: document.querySelector('#resultsStars'),
     resultsSummary: document.querySelector('#resultsSummary'),
     resultsFinalFare: document.querySelector('#resultsFinalFare'),
+    rewardBadges: document.querySelector('#rewardBadges'),
     resultsPassengerFare: document.querySelector('#resultsPassengerFare'),
     resultsTimeBonus: document.querySelector('#resultsTimeBonus'),
     resultsCleanBonus: document.querySelector('#resultsCleanBonus'),
