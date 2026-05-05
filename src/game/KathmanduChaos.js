@@ -617,7 +617,7 @@ export class KathmanduChaos {
       preserveDrawingBuffer: true,
       powerPreference: 'high-performance'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(this.getRenderPixelRatio());
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.04;
@@ -625,6 +625,15 @@ export class KathmanduChaos {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 1100);
+  }
+
+  isMobileViewport() {
+    return window.innerWidth <= 720 || window.matchMedia?.('(pointer: coarse)').matches;
+  }
+
+  getRenderPixelRatio() {
+    const maxRatio = this.isMobileViewport() ? 1.35 : 2;
+    return Math.min(window.devicePixelRatio || 1, maxRatio);
   }
 
   setupInput() {
@@ -1091,7 +1100,7 @@ export class KathmanduChaos {
     const sun = new THREE.DirectionalLight(visual.sun, this.level.wetRoad ? 1.15 : 1.72);
     sun.position.set(this.level.theme === 'durbar' ? -28 : -20, 36, this.level.wetRoad ? -10 : -18);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(this.isMobileViewport() ? 1024 : 2048, this.isMobileViewport() ? 1024 : 2048);
     sun.shadow.camera.left = -55;
     sun.shadow.camera.right = 55;
     sun.shadow.camera.top = 55;
@@ -1327,7 +1336,7 @@ export class KathmanduChaos {
 
   addWeather() {
     if (!this.level.wetRoad) return;
-    const count = 520;
+    const count = this.isMobileViewport() ? 320 : 520;
     const positions = new Float32Array(count * 3);
     const velocities = new Float32Array(count);
     for (let i = 0; i < count; i += 1) {
@@ -2636,6 +2645,7 @@ export class KathmanduChaos {
     const height = window.innerHeight;
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.renderer.setPixelRatio(this.getRenderPixelRatio());
     this.renderer.setSize(width, height, false);
   }
 

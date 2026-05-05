@@ -88,6 +88,7 @@ On mobile, use the on-screen controls:
 - Light AI traffic behavior with consistent forward movement, lane drift, braking around nearby vehicles, and horn reactions
 - Paced moving-traffic spawning with lane-aware gaps to reduce unfair clusters
 - Mobile touch controls for steering, acceleration, braking, and pause
+- Mobile polish with safe-area spacing, compact HUD, and reduced render cost on phone viewports
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 - Route-specific ambient sounds for rain, market texture, temple bells, and police whistles
 
