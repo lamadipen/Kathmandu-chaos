@@ -19,6 +19,7 @@ import { modelLibrary } from './modelLoader.js';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const rand = (min, max) => min + Math.random() * (max - min);
 const choice = (items) => items[Math.floor(Math.random() * items.length)];
+const scorePopupTextureCache = new Map();
 const obstacleNames = {
   car: 'traffic',
   cow: 'cow',
@@ -1220,6 +1221,72 @@ export class KathmanduChaos {
     this.effects.push({ type: 'burst', group, age: 0, duration: 0.6 });
   }
 
+  createScorePopupTexture(label, tone = 'good') {
+    const key = `${tone}:${label}`;
+    if (scorePopupTextureCache.has(key)) return scorePopupTextureCache.get(key);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 160;
+    const ctx = canvas.getContext('2d');
+    const fill = tone === 'bad' ? '#d94848' : tone === 'combo' ? '#ffcf42' : '#7bed9f';
+    const text = tone === 'combo' ? '#141414' : '#ffffff';
+
+    ctx.font = '900 58px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = 'rgba(10, 15, 18, 0.82)';
+    ctx.strokeStyle = fill;
+    ctx.lineWidth = 10;
+    const x = 22;
+    const y = 30;
+    const width = canvas.width - 44;
+    const height = 96;
+    const radius = 18;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = text;
+    ctx.fillText(label, canvas.width / 2, y + height / 2 + 2, width - 34);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    scorePopupTextureCache.set(key, texture);
+    return texture;
+  }
+
+  spawnScorePopup(position, label, tone = 'good') {
+    const material = new THREE.SpriteMaterial({
+      map: this.createScorePopupTexture(label, tone),
+      transparent: true,
+      depthWrite: false
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.name = 'scorePopup';
+    sprite.position.copy(position).add(new THREE.Vector3(0, 2.15, 0));
+    sprite.scale.set(3.2, 1, 1);
+    this.scene.add(sprite);
+    this.effects.push({
+      type: 'scorePopup',
+      group: sprite,
+      age: 0,
+      duration: 0.95,
+      start: sprite.position.clone(),
+      drift: new THREE.Vector3(rand(-0.45, 0.45), 1.8, 0)
+    });
+  }
+
   prepareFadeMaterials(object) {
     object.traverse((child) => {
       if (!child.isMesh || child.userData.fadeReady) return;
@@ -1277,6 +1344,12 @@ export class KathmanduChaos {
         effect.group.rotation.y += delta * 7.5;
         effect.group.scale.copy(effect.startScale).multiplyScalar(1 - eased * 0.48);
         this.setObjectOpacity(effect.group, life);
+      } else if (effect.type === 'scorePopup') {
+        const t = clamp(effect.age / effect.duration, 0, 1);
+        effect.group.position.copy(effect.start).addScaledVector(effect.drift, t);
+        effect.group.material.opacity = life;
+        const scale = 1 + Math.sin(Math.min(t, 0.5) * Math.PI) * 0.16;
+        effect.group.scale.set(3.2 * scale, scale, 1);
       } else {
         effect.group.children.forEach((child) => {
           child.position.addScaledVector(child.userData.velocity, delta);
@@ -1289,6 +1362,7 @@ export class KathmanduChaos {
           effect.group.visible = false;
           effect.group.scale.copy(effect.startScale);
         } else {
+          if (effect.type === 'scorePopup') effect.group.material.dispose();
           this.scene.remove(effect.group);
         }
         this.effects.splice(i, 1);
@@ -1313,6 +1387,8 @@ export class KathmanduChaos {
         this.showPassengerBark(this.getPassengerBark(pickup));
         const comboText = comboBonus > 0 ? ` x${this.state.combo} combo +${comboBonus}` : '';
         this.showFeedback(`Passenger boarded +${pickup.value}${comboText}`, 'good');
+        this.spawnScorePopup(pickup.mesh.position, `+${pickup.value}`, 'good');
+        if (comboBonus > 0) this.spawnScorePopup(pickup.mesh.position, `x${this.state.combo} +${comboBonus}`, 'combo');
       }
     }
   }
@@ -1342,6 +1418,7 @@ export class KathmanduChaos {
         this.playHitSound('car');
         this.flashHit();
         this.showFeedback('Blocked lane -1 chance', 'bad');
+        this.spawnScorePopup(hazard.mesh.position, '-80', 'bad');
         hazard.mesh.rotation.z = 0.22;
       } else if (hazard.type === 'pothole') {
         hazard.hit = true;
@@ -1353,12 +1430,14 @@ export class KathmanduChaos {
         this.resetCombo();
         this.playNoise(0.12, 0.1);
         this.showFeedback('Pothole! Combo broken -35', 'bad');
+        this.spawnScorePopup(hazard.mesh.position, '-35', 'bad');
       } else {
         this.state.speed = Math.max(5, this.state.speed * 0.72);
         this.state.steer += rand(-0.55, 0.55);
         this.shake = Math.max(this.shake, 0.13);
         this.playNoise(0.08, 0.06);
         this.showFeedback('Slippery puddle', 'good');
+        this.spawnScorePopup(hazard.mesh.position, 'SLOW', 'combo');
       }
     }
   }
@@ -1383,6 +1462,7 @@ export class KathmanduChaos {
         this.playHitSound(entity.type);
         this.flashHit();
         this.showFeedback(`Hit ${obstacleNames[entity.type]} -${entity.penalty} chance`, 'bad');
+        this.spawnScorePopup(entity.mesh.position, `-${penalty}`, 'bad');
         this.player.scale.set(1.08, 0.92, 1.08);
         window.setTimeout(() => this.player.scale.set(1, 1, 1), 110);
         break;
