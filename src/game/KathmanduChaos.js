@@ -1655,6 +1655,9 @@ export class KathmanduChaos {
     this.entities
       .filter((entity) => entity.type === 'police')
       .forEach((entity) => addDot('police-dot', entity.z));
+    if (this.levelIndex >= 2) {
+      this.hazards.forEach((hazard) => addDot(`hazard-dot ${hazard.type}-dot`, hazard.z));
+    }
   }
 
   renderMinimap() {
@@ -1665,6 +1668,12 @@ export class KathmanduChaos {
       const dot = this.ui.minimapTrack?.querySelectorAll('.passenger-dot')[index];
       if (dot) dot.classList.toggle('collected', pickup.collected);
     });
+    if (this.levelIndex >= 2) {
+      this.hazards.forEach((hazard, index) => {
+        const dot = this.ui.minimapTrack?.querySelectorAll('.hazard-dot')[index];
+        if (dot) dot.classList.toggle('cleared', hazard.hit);
+      });
+    }
   }
 
   renderTargetGuide() {

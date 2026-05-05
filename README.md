@@ -73,6 +73,7 @@ On mobile, use the on-screen controls:
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout
 - Floating 3D score popups for passenger fares, combo bonuses, hazards, and collisions
+- Advanced-route minimap hazard markers for potholes, puddles, and barriers
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 
