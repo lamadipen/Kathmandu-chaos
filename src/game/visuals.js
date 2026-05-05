@@ -177,11 +177,11 @@ export function createPassenger(index = 0) {
   return markShadows(group);
 }
 
-export function createObstacle(type) {
+export function createObstacle(type, variant = 0) {
   if (type === 'cow') return createCow();
   if (type === 'cyclist') return createCyclist();
   if (type === 'police') return createTrafficPolice();
-  return createTrafficVehicle();
+  return createTrafficVehicle(variant);
 }
 
 function createCow() {
@@ -309,18 +309,55 @@ export function createPoliceAccessories() {
   return markShadows(group);
 }
 
-function createTrafficVehicle() {
+function addWheelSet(group, black, xs, zs, radius = 0.28) {
+  for (const x of xs) {
+    for (const z of zs) {
+      group.add(mesh(new THREE.CylinderGeometry(radius, radius, 0.2, 16), black, [x, -0.58, z], [0, 0, Math.PI / 2]));
+    }
+  }
+}
+
+function createTrafficVehicle(variant = 0) {
   const group = new THREE.Group();
-  const body = mat(pick(vehicleColors), { roughness: 0.48 });
+  const kind = variant % 4;
+  const body = mat(pick(vehicleColors, variant), { roughness: 0.48 });
   const glass = mat(0xdbeafe, { roughness: 0.2, metalness: 0.08 });
   const black = mat(0x171717);
-  group.add(mesh(new THREE.BoxGeometry(2.15, 1.1, 3.2), body, [0, 0, 0]));
-  group.add(mesh(new THREE.BoxGeometry(1.55, 0.65, 1.45), glass, [0, 0.75, -0.15]));
-  group.add(mesh(new THREE.BoxGeometry(1.42, 0.28, 0.1), mat(0xffcf42), [0, 0.82, -1.68]));
-  for (const x of [-0.86, 0.86]) {
-    for (const z of [-1.05, 1.05]) {
-      group.add(mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16), black, [x, -0.58, z], [0, 0, Math.PI / 2]));
+
+  if (kind === 1) {
+    group.name = 'trafficBus';
+    group.add(mesh(new THREE.BoxGeometry(2.45, 1.45, 4.25), mat(0xf08c00, { roughness: 0.46 }), [0, 0.12, 0]));
+    group.add(mesh(new THREE.BoxGeometry(2.18, 0.62, 0.12), glass, [0, 0.72, -2.2]));
+    for (let z = -1.35; z <= 1.35; z += 0.9) {
+      group.add(mesh(new THREE.BoxGeometry(0.08, 0.42, 0.5), glass, [-1.24, 0.68, z]));
+      group.add(mesh(new THREE.BoxGeometry(0.08, 0.42, 0.5), glass, [1.24, 0.68, z]));
     }
+    const sign = textPlane('BUS', 1.35, 0.36, '#ffd43b', '#141414');
+    sign.position.set(0, 1.02, -2.18);
+    group.add(sign);
+    addWheelSet(group, black, [-1.03, 1.03], [-1.35, 1.45], 0.32);
+  } else if (kind === 2) {
+    group.name = 'trafficTaxi';
+    group.add(mesh(new THREE.BoxGeometry(2.05, 0.98, 3.0), mat(0xffcf42, { roughness: 0.5 }), [0, -0.08, 0]));
+    group.add(mesh(new THREE.BoxGeometry(1.38, 0.62, 1.3), glass, [0, 0.6, -0.12]));
+    group.add(mesh(new THREE.BoxGeometry(0.8, 0.18, 0.36), mat(0x111814), [0, 1.05, -0.12]));
+    group.add(mesh(new THREE.BoxGeometry(1.92, 0.12, 0.12), mat(0xd94848), [0, 0.34, -1.56]));
+    addWheelSet(group, black, [-0.82, 0.82], [-1.02, 1.04], 0.26);
+  } else if (kind === 3) {
+    group.name = 'trafficScooter';
+    group.add(mesh(new THREE.BoxGeometry(0.42, 0.28, 1.65), body, [0, -0.12, 0]));
+    group.add(mesh(new THREE.BoxGeometry(0.72, 0.16, 0.36), mat(0x202124), [0, 0.18, 0.08]));
+    group.add(mesh(new THREE.CapsuleGeometry(0.17, 0.52, 6, 10), mat(0x2b6cb0), [0, 0.7, 0.1]));
+    group.add(mesh(new THREE.SphereGeometry(0.17, 14, 10), mat(0xb9784d), [0, 1.09, -0.02]));
+    group.add(mesh(new THREE.BoxGeometry(0.9, 0.08, 0.08), black, [0, 0.44, -0.62]));
+    group.add(mesh(new THREE.TorusGeometry(0.24, 0.04, 8, 18), black, [0, -0.38, -0.68], [Math.PI / 2, 0, 0]));
+    group.add(mesh(new THREE.TorusGeometry(0.24, 0.04, 8, 18), black, [0, -0.38, 0.74], [Math.PI / 2, 0, 0]));
+  } else {
+    group.name = 'trafficCar';
+    group.add(mesh(new THREE.BoxGeometry(2.15, 1.1, 3.2), body, [0, 0, 0]));
+    group.add(mesh(new THREE.BoxGeometry(1.55, 0.65, 1.45), glass, [0, 0.75, -0.15]));
+    group.add(mesh(new THREE.BoxGeometry(1.42, 0.28, 0.1), mat(0xffcf42), [0, 0.82, -1.68]));
+    addWheelSet(group, black, [-0.86, 0.86], [-1.05, 1.05]);
   }
   return markShadows(group);
 }

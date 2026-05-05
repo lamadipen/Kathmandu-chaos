@@ -75,6 +75,7 @@ On mobile, use the on-screen controls:
 - Floating 3D score popups for passenger fares, combo bonuses, hazards, and collisions
 - Advanced-route minimap hazard markers for potholes, puddles, and barriers
 - Route-specific weather effects with monsoon rain and mist on wet routes
+- Traffic variety with cars, buses, taxis, and scooters
 - Mobile touch controls for steering, acceleration, braking, and pause
 - Generated audio layer with ambience, route music, tempo motor, horn, and volume controls
 

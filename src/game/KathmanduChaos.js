@@ -978,16 +978,27 @@ export class KathmanduChaos {
     const end = -this.level.length + 60;
     for (let i = 0; i < count; i += 1) {
       const { x, z } = this.findObstacleSlot(start, end, type);
-      const mesh = this.createObstacleMesh(type);
+      const variant = type === 'car' ? i : 0;
+      const mesh = this.createObstacleMesh(type, variant);
       mesh.position.set(x, 0.6, z);
       this.scene.add(mesh);
 
       const rb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, 0.6, z));
-      const half = type === 'cyclist' ? [0.55, 0.9, 0.9] : type === 'cow' ? [0.9, 0.65, 1.25] : [1.1, 0.75, 1.6];
+      const half = this.getObstacleHalfExtents(type, variant);
       this.world.createCollider(RAPIER.ColliderDesc.cuboid(...half), rb);
-      this.entities.push({ type, mesh, body: rb, x, z, hit: false, wobble: rand(0, Math.PI * 2), penalty: type === 'police' ? 2 : 1 });
+      this.entities.push({ type, variant, mesh, body: rb, x, z, hit: false, wobble: rand(0, Math.PI * 2), penalty: type === 'police' ? 2 : 1 });
       this.spawnedSlots.push({ x, z, radius: type === 'police' ? 13 : 9 });
     }
+  }
+
+  getObstacleHalfExtents(type, variant = 0) {
+    if (type === 'cyclist') return [0.55, 0.9, 0.9];
+    if (type === 'cow') return [0.9, 0.65, 1.25];
+    if (type === 'police') return [1.1, 0.75, 1.6];
+    const kind = variant % 4;
+    if (kind === 1) return [1.25, 0.9, 2.15];
+    if (kind === 3) return [0.58, 0.9, 1.1];
+    return [1.1, 0.75, 1.6];
   }
 
   findObstacleSlot(start, end, type) {
@@ -1003,8 +1014,8 @@ export class KathmanduChaos {
     return { x: choice(LANES.slice(1, -1)), z: rand(start, end) };
   }
 
-  createObstacleMesh(type) {
-    const mesh = createObstacle(type);
+  createObstacleMesh(type, variant = 0) {
+    const mesh = createObstacle(type, variant);
     if (type === 'police') this.attachPoliceModel(mesh);
     return mesh;
   }
