@@ -72,6 +72,7 @@ On mobile, use the on-screen controls:
 - Route mastery tracking with saved stars, best fares, route status, and unlock hints
 - Starter GLB character models with Nepali accessory overlays for passengers and traffic police
 - Route-specific passenger personality barks for commuters, students, vendors, tourists, and elders
+- Passenger callout bubbles and approach barks so waiting customers actively call for the tempo
 - Route visual polish with color grading, route-specific lighting, stronger silhouettes, and readable landmark accents
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout

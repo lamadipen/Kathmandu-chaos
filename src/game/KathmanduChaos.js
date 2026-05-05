@@ -21,6 +21,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const rand = (min, max) => min + Math.random() * (max - min);
 const choice = (items) => items[Math.floor(Math.random() * items.length)];
 const scorePopupTextureCache = new Map();
+const passengerCalloutTextureCache = new Map();
 const obstacleNames = {
   car: 'traffic',
   cow: 'cow',
@@ -174,6 +175,7 @@ export class KathmanduChaos {
     this.audio = null;
     this.feedbackTimer = 0;
     this.passengerBarkTimer = 0;
+    this.passengerCalloutTimer = 0;
     this.shake = 0;
     this.selectedRoute = 0;
     this.progress = this.loadProgress();
@@ -954,6 +956,7 @@ export class KathmanduChaos {
     this.shake = 0;
     this.feedbackTimer = 0;
     this.passengerBarkTimer = 0;
+    this.passengerCalloutTimer = 0;
     this.hornPulse = 0;
     this.nextAmbientTime = this.audio ? this.audio.ctx.currentTime + 0.25 : 0;
     this.ambientStep = 0;
@@ -1303,8 +1306,8 @@ export class KathmanduChaos {
     for (let i = 0; i < this.level.passengerGoal + 2; i += 1) {
       const lane = choice([LANES[0], LANES[4]]);
       const z = -spacing * (i + 0.75) + rand(-12, 12);
-      const passenger = this.createPassenger(lane, z, i);
       const personality = this.getPassengerPersonality(i);
+      const passenger = this.createPassenger(lane, z, i, personality);
       this.pickups.push({ mesh: passenger, collected: false, z, x: lane, index: i, personality, value: 120 + i * 15 + personality.fareBonus });
       this.spawnedSlots.push({ x: lane, z, radius: 10 });
     }
@@ -1315,12 +1318,93 @@ export class KathmanduChaos {
     return passengerPersonalities[(index + routeShift) % passengerPersonalities.length];
   }
 
-  createPassenger(x, z, index) {
+  createPassenger(x, z, index, personality = null) {
     const group = createPassengerMesh(index);
     group.position.set(x, 0, z);
     this.scene.add(group);
+    this.attachPassengerCallout(group, index, personality ?? this.getPassengerPersonality(index));
     this.attachPassengerModel(group, index);
     return group;
+  }
+
+  attachPassengerCallout(group, index, personality) {
+    const marker = group.getObjectByName('pickupMarker');
+    if (!marker) return;
+    const label = this.getPassengerCalloutLabel(index, personality);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: this.createPassengerCalloutTexture(label, personality?.id),
+      transparent: true,
+      depthWrite: false
+    }));
+    sprite.name = 'passengerCallout';
+    sprite.position.set(0, 2.55, 0);
+    sprite.scale.set(2.4, 0.9, 1);
+    marker.add(sprite);
+  }
+
+  getPassengerCalloutLabel(index, personality) {
+    const labels = {
+      commuter: ['Tempo!', 'Office!'],
+      student: ['School!', 'Tempo!'],
+      vendor: ['Yeta!', 'Bazar!'],
+      tourist: ['Stupa?', 'Tempo!'],
+      elder: ['Roknus!', 'Bistarai!']
+    };
+    const pool = labels[personality?.id] ?? ['Tempo!', 'Yeta!'];
+    return pool[(index + this.levelIndex) % pool.length];
+  }
+
+  createPassengerCalloutTexture(label, personalityId = 'commuter') {
+    const key = `${personalityId}:${label}`;
+    if (passengerCalloutTextureCache.has(key)) return passengerCalloutTextureCache.get(key);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 192;
+    const ctx = canvas.getContext('2d');
+    const colors = {
+      commuter: '#ffcf42',
+      student: '#74c0fc',
+      vendor: '#7bed9f',
+      tourist: '#f8f1dc',
+      elder: '#ffd6a5'
+    };
+    const bubble = colors[personalityId] ?? '#ffcf42';
+    ctx.font = '900 64px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = 'rgba(10, 15, 18, 0.9)';
+    ctx.strokeStyle = bubble;
+    ctx.lineWidth = 10;
+    const x = 28;
+    const y = 28;
+    const width = canvas.width - 56;
+    const height = 112;
+    const radius = 28;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(canvas.width / 2 + 24, y + height);
+    ctx.lineTo(canvas.width / 2, y + height + 34);
+    ctx.lineTo(canvas.width / 2 - 24, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = bubble;
+    ctx.fillText(label.toUpperCase(), canvas.width / 2, y + height / 2 + 2, width - 46);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    passengerCalloutTextureCache.set(key, texture);
+    return texture;
   }
 
   async attachPassengerModel(group, index) {
@@ -1503,6 +1587,7 @@ export class KathmanduChaos {
     this.state.invulnerable = Math.max(0, this.state.invulnerable - delta);
     this.feedbackTimer = Math.max(0, this.feedbackTimer - delta);
     this.passengerBarkTimer = Math.max(0, this.passengerBarkTimer - delta);
+    this.passengerCalloutTimer = Math.max(0, this.passengerCalloutTimer - delta);
     this.hornPulse = Math.max(0, this.hornPulse - delta);
     this.state.comboTimer = Math.max(0, this.state.comboTimer - delta);
     if (this.state.comboTimer <= 0 && this.state.combo > 1) {
@@ -1512,6 +1597,7 @@ export class KathmanduChaos {
 
     const nearbyPickup = this.getNearbyPickup();
     this.state.pickupAssist = nearbyPickup ? 1 : Math.max(0, this.state.pickupAssist - delta * 2.4);
+    this.updatePassengerCallouts();
 
     const batteryBoost = this.progress.upgrades.battery * 1.7;
     const brakeBoost = this.progress.upgrades.brakes * 3.4;
@@ -1611,8 +1697,35 @@ export class KathmanduChaos {
         if (billboard) {
           billboard.quaternion.copy(this.camera.quaternion);
         }
+        const callout = pickup.mesh.getObjectByName('passengerCallout');
+        if (callout) {
+          const dz = Math.abs(this.player.position.z - pickup.mesh.position.z);
+          const isTarget = this.getCurrentTarget().position === pickup.mesh.position;
+          const nearScale = isTarget ? 1.18 : dz < 55 ? 1.05 : 0.88;
+          const pulse = 1 + Math.sin(this.state.elapsed * 5.6 + pickup.index) * (isTarget ? 0.12 : 0.06);
+          callout.quaternion.copy(this.camera.quaternion);
+          callout.scale.set(2.4 * nearScale * pulse, 0.9 * nearScale * pulse, 1);
+          callout.material.opacity = isTarget || dz < 70 ? 1 : 0.72;
+        }
       }
     }
+  }
+
+  updatePassengerCallouts() {
+    if (this.passengerCalloutTimer > 0 || this.passengerBarkTimer > 0) return;
+    const nextPickup = this.pickups
+      .filter((pickup) => !pickup.collected && pickup.mesh.position.z < this.player.position.z + 8)
+      .sort((a, b) => b.mesh.position.z - a.mesh.position.z)[0];
+    if (!nextPickup) return;
+
+    const dx = Math.abs(nextPickup.mesh.position.x - this.player.position.x);
+    const dz = Math.abs(nextPickup.mesh.position.z - this.player.position.z);
+    if (dz > 62 || dx > 8.2) return;
+
+    const callout = this.getPassengerCalloutLabel(nextPickup.index, nextPickup.personality);
+    this.showPassengerBark(`${nextPickup.personality.prefix}: ${callout} Maya didi!`);
+    this.playPassengerBarkSound(nextPickup.index);
+    this.passengerCalloutTimer = 4.2;
   }
 
   updateTrafficAi(entity, delta) {
