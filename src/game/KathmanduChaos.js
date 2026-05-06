@@ -197,11 +197,17 @@ export class KathmanduChaos {
       brake: false
     };
     this.modelManifest = { enabled: false, passengers: [], police: '' };
+    this.assetStatus = { loaded: 0, failed: 0, fallback: true };
   }
 
   async boot() {
+    const bootStarted = performance.now();
+    this.showLoadingScreen('Starting Kathmandu traffic physics...');
     await RAPIER.init();
+    this.showLoadingScreen('Checking character model manifest...');
     await this.loadModelManifest();
+    await this.preloadModelAssets();
+    this.showLoadingScreen('Building the first route...');
     this.setupRenderer();
     this.setupInput();
     this.setupTouchControls();
@@ -209,14 +215,38 @@ export class KathmanduChaos {
     window.addEventListener('resize', () => this.resize());
     this.setupGarage();
     this.loadLevel(0, { showIntro: false });
+    await this.waitForMinimumLoadingTime(bootStarted);
     this.showTitleMenu();
     this.animate();
+  }
+
+  waitForMinimumLoadingTime(startedAt, minimum = 1400) {
+    const remaining = minimum - (performance.now() - startedAt);
+    if (remaining <= 0) return Promise.resolve();
+    this.showLoadingScreen('Warming up the tempo...');
+    return new Promise((resolve) => window.setTimeout(resolve, remaining));
+  }
+
+  showLoadingScreen(message) {
+    if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = 'Loading';
+    if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = 'Kathmandu Chaos';
+    if (this.ui.overlayText) this.ui.overlayText.textContent = `${message} Built-in low-poly fallbacks are ready if imported models are unavailable.`;
+    this.ui.garage?.classList.add('hidden');
+    this.ui.resultsMenu?.classList.add('hidden');
+    this.ui.pauseMenu?.classList.add('hidden');
+    this.ui.overlay?.classList.add('loading');
+    this.ui.overlay?.classList.remove('hidden');
+    if (this.ui.startButton) this.ui.startButton.classList.add('hidden');
+    if (this.ui.secondaryButton) this.ui.secondaryButton.classList.add('hidden');
   }
 
   async loadModelManifest() {
     try {
       const response = await fetch('/models/manifest.json', { cache: 'no-store' });
-      if (!response.ok) return;
+      if (!response.ok) {
+        this.assetStatus = { loaded: 0, failed: 1, fallback: true };
+        return;
+      }
       const manifest = await response.json();
       this.modelManifest = {
         enabled: Boolean(manifest.enabled),
@@ -226,7 +256,46 @@ export class KathmanduChaos {
       };
     } catch {
       this.modelManifest = { enabled: false, passengers: [], police: '' };
+      this.assetStatus = { loaded: 0, failed: 1, fallback: true };
     }
+  }
+
+  async preloadModelAssets() {
+    if (!this.modelManifest.enabled) {
+      this.assetStatus = { loaded: 0, failed: 0, fallback: true };
+      return;
+    }
+
+    this.showLoadingScreen('Loading character models...');
+    const passengerResults = await Promise.all(this.modelManifest.passengers.map(async (path) => {
+      try {
+        await modelLibrary.load(path);
+        return { path, ok: true };
+      } catch {
+        return { path, ok: false };
+      }
+    }));
+
+    let policeOk = false;
+    if (this.modelManifest.police) {
+      try {
+        await modelLibrary.load(this.modelManifest.police);
+        policeOk = true;
+      } catch {
+        policeOk = false;
+      }
+    }
+
+    const loadedPassengers = passengerResults.filter((result) => result.ok).map((result) => result.path);
+    const failed = passengerResults.filter((result) => !result.ok).length + (this.modelManifest.police && !policeOk ? 1 : 0);
+    this.modelManifest.passengers = loadedPassengers;
+    if (!policeOk) this.modelManifest.police = '';
+    this.modelManifest.enabled = loadedPassengers.length > 0 || Boolean(this.modelManifest.police);
+    this.assetStatus = {
+      loaded: loadedPassengers.length + (policeOk ? 1 : 0),
+      failed,
+      fallback: failed > 0 || !this.modelManifest.enabled
+    };
   }
 
   loadProgress() {
@@ -314,10 +383,14 @@ export class KathmanduChaos {
 
   showTitleMenu() {
     const cleared = Object.values(this.progress.bestScores ?? {}).filter((score) => Number(score) > 0).length;
+    const assetLine = this.assetStatus.loaded > 0
+      ? `Loaded ${this.assetStatus.loaded} imported character model${this.assetStatus.loaded === 1 ? '' : 's'}${this.assetStatus.failed ? `; ${this.assetStatus.failed} fallback${this.assetStatus.failed === 1 ? '' : 's'} active` : ''}.`
+      : 'Using built-in low-poly character fallbacks.';
     const story = [
       'Maya Lama has one morning to save her family tempo permit.',
       'Kathmandu is already awake: office crowds at Ratna Park, bells near Boudha, brick alleys in Patan, monsoon traffic on Ring Road, and the final climb to Swayambhu.',
-      'Pick up passengers, read the landmarks, earn bonus fares, and keep the little green tempo moving.'
+      'Pick up passengers, read the landmarks, earn bonus fares, and keep the little green tempo moving.',
+      assetLine
     ].join(' ');
 
     if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = cleared > 0 ? `${cleared}/${LEVELS.length} routes cleared` : 'Story mode';
@@ -2620,8 +2693,10 @@ export class KathmanduChaos {
     this.running = false;
     this.pausedByOverlay = true;
     this.ui.garage?.classList.add('hidden');
+    this.ui.overlay?.classList.remove('loading');
     this.ui.overlayText.textContent = text;
     this.ui.startButton.textContent = buttonLabel;
+    this.ui.startButton.classList.remove('hidden');
     this.ui.startButton.onclick = () => {
       this.ensureAudio();
       action();

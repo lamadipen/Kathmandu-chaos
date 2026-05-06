@@ -72,6 +72,7 @@ On mobile, use the on-screen controls:
 - Route mastery tracking with saved stars, best fares, route status, and unlock hints
 - Tuned 5-route difficulty curve for time limits, traffic density, hazards, and optional bonus rewards
 - Starter GLB character models with Nepali accessory overlays for passengers and traffic police
+- Loading screen with GLB preloading and built-in character fallback status
 - Route-specific passenger personality barks for commuters, students, vendors, tourists, and elders
 - Passenger callout bubbles and approach barks so waiting customers actively call for the tempo
 - Route intro camera labels that spotlight key landmarks before the run starts

@@ -926,6 +926,32 @@ button:disabled {
   display: none;
 }
 
+.overlay.loading .panel::after {
+  display: block;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 16%);
+  content: "";
+  box-shadow: inset 34vw 0 0 #ffcf42;
+  animation: loadingSweep 1.15s ease-in-out infinite alternate;
+}
+
+.overlay.loading .keys {
+  display: none;
+}
+
+@keyframes loadingSweep {
+  from {
+    box-shadow: inset 18vw 0 0 #ffcf42;
+  }
+
+  to {
+    box-shadow: inset 58vw 0 0 #7bed9f;
+  }
+}
+
 .panel,
 .results-panel {
   width: min(520px, 100%);
