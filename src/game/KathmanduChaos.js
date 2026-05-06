@@ -84,6 +84,40 @@ const passengerPersonalities = [
   { id: 'tourist', prefix: 'Tourist', fareBonus: 15 },
   { id: 'elder', prefix: 'Elder', fareBonus: 10 }
 ];
+const passengerRequests = [
+  {
+    id: 'fast',
+    badge: 'FAST',
+    label: 'Chito pugnu cha',
+    hint: 'Board at 18+ speed',
+    bonus: 70,
+    tone: 'Hurry passenger'
+  },
+  {
+    id: 'safe',
+    badge: 'SAFE',
+    label: 'Bistarai hai',
+    hint: 'Avoid hits before pickup',
+    bonus: 80,
+    tone: 'Careful passenger'
+  },
+  {
+    id: 'slow',
+    badge: 'SLOW',
+    label: 'Bistarai chalaunus',
+    hint: 'Board under 13 speed',
+    bonus: 55,
+    tone: 'Gentle passenger'
+  },
+  {
+    id: 'horn',
+    badge: 'HORN',
+    label: 'Horn dinus hai',
+    hint: 'Horn near passenger',
+    bonus: 60,
+    tone: 'Street-smart passenger'
+  }
+];
 const routeVisualProfiles = {
   market: {
     sky: 0xc7ecff,
@@ -1174,6 +1208,12 @@ export class KathmanduChaos {
   triggerTrafficHornReaction() {
     this.hornPulse = 0.65;
     if (!this.player) return;
+    for (const pickup of this.pickups) {
+      if (pickup.collected || pickup.request?.id !== 'horn') continue;
+      const dx = Math.abs(pickup.mesh.position.x - this.player.position.x);
+      const dz = Math.abs(pickup.mesh.position.z - this.player.position.z);
+      if (dx < 7 && dz < 44) pickup.requestHorned = true;
+    }
     for (const entity of this.entities) {
       if (!['car', 'cyclist', 'cow', 'police'].includes(entity.type)) continue;
       const dx = Math.abs(entity.mesh.position.x - this.player.position.x);
@@ -1758,8 +1798,22 @@ export class KathmanduChaos {
       const z = -spacing * (i + 0.75) + rand(-12, 12);
       const x = this.getRoadX(lane, z);
       const personality = this.getPassengerPersonality(i);
+      const request = this.getPassengerRequest(i, personality);
       const passenger = this.createPassenger(x, z, i, personality);
-      this.pickups.push({ mesh: passenger, collected: false, z, x, lane, index: i, personality, value: 120 + i * 12 + personality.fareBonus });
+      this.attachPassengerRequestBadge(passenger, request);
+      this.pickups.push({
+        mesh: passenger,
+        collected: false,
+        z,
+        x,
+        lane,
+        index: i,
+        personality,
+        request,
+        requestHorned: false,
+        startCollisions: this.state.collisions,
+        value: 120 + i * 12 + personality.fareBonus
+      });
       this.spawnedSlots.push({ x, z, radius: 10 });
     }
   }
@@ -1769,6 +1823,11 @@ export class KathmanduChaos {
     return passengerPersonalities[(index + routeShift) % passengerPersonalities.length];
   }
 
+  getPassengerRequest(index, personality) {
+    const offset = personality?.fareBonus ?? 0;
+    return passengerRequests[(index + this.levelIndex + offset) % passengerRequests.length];
+  }
+
   createPassenger(x, z, index, personality = null) {
     const group = createPassengerMesh(index);
     group.position.set(x, 0, z);
@@ -1776,6 +1835,55 @@ export class KathmanduChaos {
     this.attachPassengerCallout(group, index, personality ?? this.getPassengerPersonality(index));
     this.attachPassengerModel(group, index);
     return group;
+  }
+
+  attachPassengerRequestBadge(group, request) {
+    const marker = group.getObjectByName('pickupMarker');
+    if (!marker || !request) return;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: this.createPassengerRequestTexture(request.badge, request.id),
+      transparent: true,
+      depthWrite: false
+    }));
+    sprite.name = 'passengerRequestBadge';
+    sprite.position.set(0, 3.38, 0);
+    sprite.scale.set(2.05, 0.72, 1);
+    marker.add(sprite);
+  }
+
+  createPassengerRequestTexture(label, requestId = 'safe') {
+    const key = `request:${requestId}:${label}`;
+    if (passengerCalloutTextureCache.has(key)) return passengerCalloutTextureCache.get(key);
+
+    const colors = {
+      fast: '#ffcf42',
+      safe: '#7bed9f',
+      slow: '#74c0fc',
+      horn: '#ff8fab'
+    };
+    const accent = colors[requestId] ?? '#ffcf42';
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.font = '900 52px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = 'rgba(10, 15, 18, 0.92)';
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.roundRect(22, 22, canvas.width - 44, canvas.height - 44, 24);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = accent;
+    ctx.fillText(label, canvas.width / 2, canvas.height / 2 + 2, canvas.width - 70);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    passengerCalloutTextureCache.set(key, texture);
+    return texture;
   }
 
   attachPassengerCallout(group, index, personality) {
@@ -2274,6 +2382,14 @@ export class KathmanduChaos {
           callout.scale.set(2.4 * nearScale * pulse, 0.9 * nearScale * pulse, 1);
           callout.material.opacity = isTarget || dz < 70 ? 1 : 0.72;
         }
+        const requestBadge = pickup.mesh.getObjectByName('passengerRequestBadge');
+        if (requestBadge) {
+          const isTarget = this.getCurrentTarget().position === pickup.mesh.position;
+          const pulse = 1 + Math.sin(this.state.elapsed * 6.2 + pickup.index) * (isTarget ? 0.12 : 0.06);
+          requestBadge.quaternion.copy(this.camera.quaternion);
+          requestBadge.scale.set(2.05 * pulse, 0.72 * pulse, 1);
+          requestBadge.material.opacity = isTarget ? 1 : 0.78;
+        }
       }
     }
   }
@@ -2290,7 +2406,8 @@ export class KathmanduChaos {
     if (dz > 62 || dx > 8.2) return;
 
     const callout = this.getPassengerCalloutLabel(nextPickup.index, nextPickup.personality);
-    this.showPassengerBark(`${nextPickup.personality.prefix}: ${callout} Maya didi!`);
+    const request = nextPickup.request ? ` ${nextPickup.request.hint}.` : '';
+    this.showPassengerBark(`${nextPickup.personality.prefix}: ${callout} Maya didi!${request}`);
     this.playPassengerBarkSound(nextPickup.index);
     this.passengerCalloutTimer = 4.2;
   }
@@ -2359,7 +2476,7 @@ export class KathmanduChaos {
       .sort((a, b) => b.mesh.position.z - a.mesh.position.z)[0];
 
     if (this.state.passengers < this.level.passengerGoal && nextPickup) {
-      return { label: 'Next passenger', position: nextPickup.mesh.position };
+      return { label: nextPickup.request ? `${nextPickup.request.badge} passenger` : 'Next passenger', position: nextPickup.mesh.position, pickup: nextPickup };
     }
     const finishZ = -this.level.length;
     return { label: 'Finish gate', position: new THREE.Vector3(this.getRoadCenter(finishZ), 0, finishZ) };
@@ -2569,7 +2686,8 @@ export class KathmanduChaos {
     const linePool = pickup.index % 3 === 2 ? [...routeLines, sharedLine] : routeLines;
     const line = linePool[(pickup.index + this.levelIndex) % linePool.length];
     const speaker = pickup.personality?.prefix ?? this.getPassengerPersonality(pickup.index).prefix;
-    return `${speaker}: ${line}`;
+    const request = pickup.request ? ` ${pickup.request.label}!` : '';
+    return `${speaker}: ${line}${request}`;
   }
 
   awardPickupFare(pickup) {
@@ -2587,6 +2705,25 @@ export class KathmanduChaos {
     this.state.comboBonus += comboBonus;
     this.state.score += pickup.value + comboBonus;
     return comboBonus;
+  }
+
+  evaluatePassengerRequest(pickup) {
+    const request = pickup.request;
+    if (!request) return { met: false, bonus: 0, message: '' };
+    let met = false;
+    if (request.id === 'fast') met = this.state.speed >= 18;
+    else if (request.id === 'safe') met = this.state.collisions === pickup.startCollisions;
+    else if (request.id === 'slow') met = this.state.speed <= 13;
+    else if (request.id === 'horn') met = pickup.requestHorned;
+    if (!met) return { met: false, bonus: 0, message: `${request.badge} request missed` };
+
+    this.state.passengerFare += request.bonus;
+    this.state.score += request.bonus;
+    return {
+      met: true,
+      bonus: request.bonus,
+      message: `${request.tone} +${request.bonus}`
+    };
   }
 
   resetCombo() {
@@ -2772,6 +2909,7 @@ export class KathmanduChaos {
       if (dx < 2.15 && dz < 3.1) {
         pickup.collected = true;
         const comboBonus = this.awardPickupFare(pickup);
+        const requestResult = this.evaluatePassengerRequest(pickup);
         this.state.passengers += 1;
         this.state.speed = Math.max(5, this.state.speed * 0.72);
         this.spawnPickupBurst(pickup.mesh.position);
@@ -2780,9 +2918,11 @@ export class KathmanduChaos {
         this.playPassengerBarkSound(pickup.index);
         this.showPassengerBark(this.getPassengerBark(pickup));
         const comboText = comboBonus > 0 ? ` x${this.state.combo} combo +${comboBonus}` : '';
-        this.showFeedback(`Passenger boarded +${pickup.value}${comboText}`, 'good');
+        const requestText = requestResult.met ? ` ${requestResult.message}` : '';
+        this.showFeedback(`Passenger boarded +${pickup.value}${comboText}${requestText}`, 'good');
         this.spawnScorePopup(pickup.mesh.position, `+${pickup.value}`, 'good');
         if (comboBonus > 0) this.spawnScorePopup(pickup.mesh.position, `x${this.state.combo} +${comboBonus}`, 'combo');
+        if (requestResult.met) this.spawnScorePopup(pickup.mesh.position, `${pickup.request.badge} +${requestResult.bonus}`, 'combo');
       }
     }
   }
@@ -3105,9 +3245,12 @@ export class KathmanduChaos {
     this.ui.targetArrow.style.transform = `rotate(${angle}rad)`;
     if (this.ui.objective) {
       const bonus = this.getActiveBonusObjective();
-      this.ui.objective.textContent = bonus
-        ? `Bonus: ${bonus.label} +${bonus.reward}`
-        : 'Drive through yellow rings to board passengers.';
+      const request = target.pickup?.request;
+      this.ui.objective.textContent = request
+        ? `${request.label}: ${request.hint} +${request.bonus}`
+        : bonus
+          ? `Bonus: ${bonus.label} +${bonus.reward}`
+          : 'Drive through yellow rings to board passengers.';
     }
   }
 

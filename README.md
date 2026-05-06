@@ -52,6 +52,7 @@ On mobile, use the on-screen controls:
 - Three.js 3D city, road, obstacles, and finish gates
 - Rapier physics world and colliders
 - Passenger pickup scoring
+- Passenger driving requests such as fast pickup, careful pickup, slow boarding, and horn-before-pickup bonuses
 - Yellow pickup rings and floating passenger markers
 - Target guide with distance and direction
 - Pickup chimes, collision feedback, screen flash, camera shake, and speed-line cues
