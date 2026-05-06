@@ -339,6 +339,7 @@ export class KathmanduChaos {
   setupGarage() {
     this.ui.garageStart?.addEventListener('click', () => this.startSelectedRoute());
     this.ui.audioToggle?.addEventListener('click', () => this.toggleAudio());
+    this.ui.creditsButton?.addEventListener('click', () => this.showCredits('garage'));
     this.ui.pauseAudioToggle?.addEventListener('click', () => this.toggleAudio());
     this.ui.volumeSlider?.addEventListener('input', (event) => this.setAudioVolume(Number(event.target.value) / 100));
     this.ui.pauseVolumeSlider?.addEventListener('input', (event) => this.setAudioVolume(Number(event.target.value) / 100));
@@ -396,8 +397,24 @@ export class KathmanduChaos {
     if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = cleared > 0 ? `${cleared}/${LEVELS.length} routes cleared` : 'Story mode';
     if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = 'Kathmandu Chaos';
     this.showOverlay(story, 'Enter garage', () => this.showGarage(), {
-      label: this.progress.unlocked > 0 ? 'Continue route' : 'Start first route',
-      action: () => this.startRoute(Math.min(this.selectedRoute, this.progress.unlocked))
+      label: 'Credits',
+      action: () => this.showCredits('title')
+    });
+  }
+
+  showCredits(returnTo = 'title') {
+    const credits = [
+      'Kathmandu Chaos is a Three.js and Rapier arcade prototype created as a Nepali tempo driving game.',
+      'Imported starter character models: Kenney Blocky Characters 2.0 by Kenney, licensed Creative Commons Zero (CC0). Credit is appreciated but not required by the license. License file: public/models/vendor/kenney-blocky-characters/License.txt.',
+      'Passenger and traffic-police models are production stand-ins with Kathmandu-themed accessory overlays. Built-in low-poly fallback characters, vehicles, streets, landmarks, audio, and UI are generated in this project so the game remains playable if external models fail to load.',
+      `Current asset status: ${this.assetStatus.loaded} imported model${this.assetStatus.loaded === 1 ? '' : 's'} loaded, ${this.assetStatus.failed} fallback${this.assetStatus.failed === 1 ? '' : 's'} active.`
+    ].join(' ');
+
+    if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = 'Credits & licenses';
+    if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = 'Kathmandu Chaos';
+    this.showOverlay(credits, returnTo === 'garage' ? 'Back to garage' : 'Back to title', () => {
+      if (returnTo === 'garage') this.showGarage();
+      else this.showTitleMenu();
     });
   }
 

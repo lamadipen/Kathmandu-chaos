@@ -31,6 +31,7 @@ const game = new KathmanduChaos({
     handlingUpgrade: document.querySelector('#handlingUpgrade'),
     skinOptions: document.querySelector('#skinOptions'),
     audioToggle: document.querySelector('#audioToggle'),
+    creditsButton: document.querySelector('#creditsButton'),
     volumeSlider: document.querySelector('#volumeSlider'),
     resetProgress: document.querySelector('#resetProgress'),
     pauseMenu: document.querySelector('#pauseMenu'),
