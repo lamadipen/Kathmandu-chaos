@@ -218,7 +218,7 @@ export class KathmanduChaos {
     this.setupGarage();
     this.loadLevel(0, { showIntro: false });
     await this.waitForMinimumLoadingTime(bootStarted);
-    this.showTitleMenu();
+    this.showGarage();
     this.animate();
   }
 
