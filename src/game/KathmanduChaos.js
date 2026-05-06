@@ -23,7 +23,6 @@ const choice = (items) => items[Math.floor(Math.random() * items.length)];
 const scorePopupTextureCache = new Map();
 const passengerCalloutTextureCache = new Map();
 const routeIntroLabelTextureCache = new Map();
-const trafficSignalTextureCache = new Map();
 const obstacleNames = {
   car: 'traffic',
   cow: 'cow',
@@ -380,6 +379,7 @@ export class KathmanduChaos {
     this.paused = false;
     this.tutorialCoach.active = false;
     this.hideTutorialCoach();
+    this.hideTrafficSignalHud();
     if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = 'Tempo mission';
     if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = 'Kathmandu Chaos';
     this.ui.overlay.classList.add('hidden');
@@ -1554,68 +1554,72 @@ export class KathmanduChaos {
       const angle = this.getRoadAngle(z);
       const group = new THREE.Group();
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x2b3034, roughness: 0.6 });
-      const redMat = new THREE.MeshBasicMaterial({ color: 0xff2438 });
-      const dimMat = new THREE.MeshBasicMaterial({ color: 0x26323a, transparent: true, opacity: 0.72 });
-      const greenMat = new THREE.MeshBasicMaterial({ color: 0x244535, transparent: true, opacity: 0.52 });
-      const amberMat = new THREE.MeshBasicMaterial({ color: 0x5f4d20, transparent: true, opacity: 0.52 });
+      const redMat = new THREE.MeshBasicMaterial({ color: 0xff2438, transparent: true, opacity: 1 });
+      const greenMat = new THREE.MeshBasicMaterial({ color: 0x31d67b, transparent: true, opacity: 0.34 });
+      const amberMat = new THREE.MeshBasicMaterial({ color: 0xffcf42, transparent: true, opacity: 0.34 });
       const housingMat = new THREE.MeshStandardMaterial({ color: 0x101418, roughness: 0.5 });
       const glowMat = new THREE.MeshBasicMaterial({ color: 0xff2438, transparent: true, opacity: 0.18, depthWrite: false });
 
-      const gantry = new THREE.Mesh(new THREE.BoxGeometry(16.8, 0.16, 0.16), poleMat);
-      gantry.position.set(center, 5.45, z - 0.6);
+      const gantry = new THREE.Mesh(new THREE.BoxGeometry(18.4, 0.26, 0.26), poleMat);
+      gantry.position.set(center, 5.92, z - 0.6);
       gantry.rotation.y = angle;
       group.add(gantry);
 
-      const overheadBox = new THREE.Mesh(new THREE.BoxGeometry(2.9, 1.2, 0.34), housingMat);
-      overheadBox.position.set(center, 5.16, z - 0.82);
+      const gantryBack = new THREE.Mesh(new THREE.BoxGeometry(18.4, 0.12, 0.12), poleMat);
+      gantryBack.position.set(center, 5.55, z - 0.35);
+      gantryBack.rotation.y = angle;
+      group.add(gantryBack);
+
+      const overheadBox = new THREE.Mesh(new THREE.BoxGeometry(4.55, 1.58, 0.44), housingMat);
+      overheadBox.position.set(center, 5.48, z - 0.82);
       overheadBox.rotation.y = angle;
       group.add(overheadBox);
 
-      const overheadRed = new THREE.Mesh(new THREE.SphereGeometry(0.34, 24, 16), redMat.clone());
-      overheadRed.name = 'redSignalLamp';
-      overheadRed.position.set(center - 0.82, 5.17, z - 1.03);
+      const overheadRed = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16), redMat.clone());
+      overheadRed.name = 'trafficSignalLamp';
+      overheadRed.userData.signalColor = 'red';
+      overheadRed.position.set(center - 0.95, 5.48, z - 1.09);
       group.add(overheadRed);
 
-      const overheadAmber = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 12), amberMat.clone());
-      overheadAmber.position.set(center, 5.17, z - 1.04);
+      const overheadAmber = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 12), amberMat.clone());
+      overheadAmber.name = 'trafficSignalLamp';
+      overheadAmber.userData.signalColor = 'yellow';
+      overheadAmber.position.set(center, 5.48, z - 1.1);
       group.add(overheadAmber);
 
-      const overheadGreen = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 12), greenMat.clone());
-      overheadGreen.position.set(center + 0.82, 5.17, z - 1.04);
+      const overheadGreen = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 12), greenMat.clone());
+      overheadGreen.name = 'trafficSignalLamp';
+      overheadGreen.userData.signalColor = 'green';
+      overheadGreen.position.set(center + 0.95, 5.48, z - 1.1);
       group.add(overheadGreen);
 
       const redGlow = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 2.3), glowMat.clone());
       redGlow.name = 'redSignalGlow';
-      redGlow.position.set(center - 0.82, 5.17, z - 1.08);
+      redGlow.position.set(center, 5.48, z - 1.15);
       redGlow.rotation.y = angle;
       group.add(redGlow);
 
-      const sign = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: this.createTrafficSignalTexture('RED LIGHT', 'SLOW'),
-        transparent: true,
-        depthWrite: false
-      }));
-      sign.name = 'redSignalSign';
-      sign.position.set(center, 6.35, z - 1.15);
-      sign.scale.set(4.4, 1.3, 1);
-      group.add(sign);
-
       for (const side of [-1, 1]) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 5.1, 10), poleMat);
-        pole.position.set(center + side * 7.9, 2.25, z);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 6.2, 12), poleMat);
+        pole.position.set(center + side * 8.65, 2.95, z);
         group.add(pole);
-        const box = new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.5, 0.34), housingMat);
-        box.position.set(center + side * 7.9, 4.55, z - 0.45);
+        const box = new THREE.Mesh(new THREE.BoxGeometry(1.08, 1.78, 0.42), housingMat);
+        box.position.set(center + side * 8.65, 5.02, z - 0.45);
         group.add(box);
-        const red = new THREE.Mesh(new THREE.SphereGeometry(0.28, 20, 14), redMat.clone());
-        red.name = 'redSignalLamp';
-        red.position.set(center + side * 7.9, 4.92, z - 0.66);
+        const red = new THREE.Mesh(new THREE.SphereGeometry(0.34, 20, 14), redMat.clone());
+        red.name = 'trafficSignalLamp';
+        red.userData.signalColor = 'red';
+        red.position.set(center + side * 8.65, 5.46, z - 0.71);
         group.add(red);
-        const amber = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 10), amberMat.clone());
-        amber.position.set(center + side * 7.9, 4.52, z - 0.66);
+        const amber = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 10), amberMat.clone());
+        amber.name = 'trafficSignalLamp';
+        amber.userData.signalColor = 'yellow';
+        amber.position.set(center + side * 8.65, 5.0, z - 0.71);
         group.add(amber);
-        const green = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 10), dimMat.clone());
-        green.position.set(center + side * 7.9, 4.14, z - 0.66);
+        const green = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 10), greenMat.clone());
+        green.name = 'trafficSignalLamp';
+        green.userData.signalColor = 'green';
+        green.position.set(center + side * 8.65, 4.56, z - 0.71);
         group.add(green);
       }
       const stripe = new THREE.Mesh(
@@ -1626,22 +1630,17 @@ export class KathmanduChaos {
       stripe.rotation.y = angle;
       group.add(stripe);
 
-      const stopText = new THREE.Mesh(
-        new THREE.PlaneGeometry(5.8, 1.45),
-        new THREE.MeshBasicMaterial({
-          map: this.createTrafficSignalTexture('STOP', ''),
-          transparent: true,
-          depthWrite: false
-        })
-      );
-      stopText.rotation.x = -Math.PI / 2;
-      stopText.rotation.z = -angle;
-      stopText.position.set(center, 0.072, z + 5.2);
-      group.add(stopText);
+      const zebraMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.78 });
+      for (let i = 0; i < 7; i += 1) {
+        const zebra = new THREE.Mesh(new THREE.BoxGeometry(14.6, 0.032, 0.42), zebraMat);
+        zebra.position.set(center, 0.068, z + 3.4 + i * 0.72);
+        zebra.rotation.y = angle;
+        group.add(zebra);
+      }
 
       const stopZone = new THREE.Mesh(
         new THREE.PlaneGeometry(17, 11),
-        new THREE.MeshBasicMaterial({ color: 0xff2438, transparent: true, opacity: 0.08, depthWrite: false })
+        new THREE.MeshBasicMaterial({ color: 0xffcf42, transparent: true, opacity: 0.06, depthWrite: false })
       );
       stopZone.rotation.x = -Math.PI / 2;
       stopZone.rotation.z = -angle;
@@ -1654,41 +1653,18 @@ export class KathmanduChaos {
       group.add(light);
 
       this.scene.add(group);
-      this.redLights.push({ z, center, group, active: true, hit: false, index });
+      const states = ['red', 'yellow', 'green'];
+      this.redLights.push({
+        z,
+        center,
+        group,
+        active: true,
+        hit: false,
+        index,
+        signal: states[(index + this.levelIndex) % states.length],
+        signalTimer: rand(1.4, 3.4)
+      });
     }
-  }
-
-  createTrafficSignalTexture(primary, secondary = '') {
-    const key = `${primary}:${secondary}`;
-    if (trafficSignalTextureCache.has(key)) return trafficSignalTextureCache.get(key);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 192;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = primary === 'STOP' ? 'rgba(255, 36, 56, 0.88)' : 'rgba(10, 15, 18, 0.92)';
-    ctx.strokeStyle = primary === 'STOP' ? '#ffffff' : '#ff2438';
-    ctx.lineWidth = 12;
-    ctx.beginPath();
-    ctx.roundRect(26, 28, canvas.width - 52, canvas.height - 56, 24);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '900 68px Arial, sans-serif';
-    ctx.fillText(primary, canvas.width / 2, secondary ? 80 : 98, canvas.width - 86);
-    if (secondary) {
-      ctx.fillStyle = '#ffcf42';
-      ctx.font = '900 38px Arial, sans-serif';
-      ctx.fillText(secondary, canvas.width / 2, 132, canvas.width - 100);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    trafficSignalTextureCache.set(key, texture);
-    return texture;
   }
 
   addWeather() {
@@ -2436,9 +2412,24 @@ export class KathmanduChaos {
       if (dz > 3.2 || dx > 8.2) continue;
 
       light.hit = true;
-      this.setRedLightCleared(light);
+      this.setTrafficSignalCleared(light);
       const position = new THREE.Vector3(light.center, 2.6, light.z);
-      if (this.state.speed < 10) {
+      if (light.signal === 'green') {
+        this.state.score += 35;
+        this.showFeedback('Green light +35', 'good');
+        this.spawnScorePopup(position, '+35', 'good');
+        this.playTone(740, 0.08, 'triangle', 0.09);
+      } else if (light.signal === 'yellow') {
+        if (this.state.speed < 16) {
+          this.state.score += 30;
+          this.showFeedback('Careful through yellow +30', 'good');
+          this.spawnScorePopup(position, '+30', 'good');
+          this.playTone(620, 0.08, 'triangle', 0.08);
+        } else {
+          this.showFeedback('Yellow light: careful!', 'bad');
+          this.playTone(420, 0.08, 'triangle', 0.07);
+        }
+      } else if (this.state.speed < 10) {
         this.state.score += 40;
         this.showFeedback('Clean stop at red light +40', 'good');
         this.spawnScorePopup(position, '+40', 'good');
@@ -2461,31 +2452,89 @@ export class KathmanduChaos {
   }
 
   updateRedLightSignals(delta) {
-    if (!this.redLights.length || !this.camera) return;
+    if (!this.redLights.length || !this.camera) {
+      this.hideTrafficSignalHud();
+      return;
+    }
     for (const light of this.redLights) {
+      if (!light.hit) {
+        light.signalTimer -= delta;
+        if (light.signalTimer <= 0) {
+          const nextStates = ['red', 'yellow', 'green'].filter((state) => state !== light.signal);
+          light.signal = choice(nextStates);
+          light.signalTimer = rand(1.25, 3.2);
+        }
+      }
       const dz = light.z - this.player.position.z;
       const approaching = dz < -8 && dz > -105 && !light.hit;
       const pulse = approaching ? 0.72 + Math.sin(this.state.elapsed * 8) * 0.28 : 0.72;
+      const activeColor = this.getTrafficSignalColor(light.signal);
       light.group?.traverse((child) => {
-        if (child.name === 'redSignalSign') child.quaternion.copy(this.camera.quaternion);
-        if (child.name === 'redSignalLamp' && child.material?.opacity !== undefined) {
+        if (child.name === 'trafficSignalLamp' && child.material?.opacity !== undefined) {
+          const isActive = child.userData.signalColor === light.signal;
           child.material.transparent = true;
-          child.material.opacity = light.hit ? 0.28 : pulse;
+          child.material.color?.setHex(isActive ? activeColor : this.getTrafficSignalColor(child.userData.signalColor, true));
+          child.material.opacity = light.hit ? 0.24 : isActive ? pulse : 0.28;
         }
         if (child.name === 'redSignalGlow' && child.material) {
-          child.material.opacity = light.hit ? 0.04 : 0.14 + pulse * 0.18;
+          child.material.color?.setHex(activeColor);
+          child.material.opacity = light.hit ? 0.04 : 0.1 + pulse * 0.16;
           child.quaternion.copy(this.camera.quaternion);
         }
         if (child.name === 'redSignalLight') {
+          child.color?.setHex(activeColor);
           child.intensity = light.hit ? 0.3 : approaching ? 3.4 : 2.2;
         }
       });
     }
+    this.renderTrafficSignalHud();
   }
 
-  setRedLightCleared(light) {
+  getUpcomingTrafficSignal() {
+    if (!this.player || !this.redLights.length) return null;
+    return this.redLights
+      .filter((light) => !light.hit)
+      .map((light) => ({ light, distance: this.player.position.z - light.z }))
+      .filter((item) => item.distance > -6 && item.distance < 95)
+      .sort((a, b) => a.distance - b.distance)[0] ?? null;
+  }
+
+  renderTrafficSignalHud() {
+    if (!this.ui.trafficSignalHud || this.pausedByOverlay) {
+      this.hideTrafficSignalHud();
+      return;
+    }
+
+    const upcoming = this.getUpcomingTrafficSignal();
+    if (!upcoming) {
+      this.hideTrafficSignalHud();
+      return;
+    }
+
+    const { light, distance } = upcoming;
+    this.ui.trafficSignalHud.classList.remove('hidden', 'red', 'yellow', 'green');
+    this.ui.trafficSignalHud.classList.add(light.signal);
+    if (this.ui.trafficSignalDistance) {
+      this.ui.trafficSignalDistance.textContent = distance <= 8 ? 'At signal' : `${Math.round(distance)} m`;
+    }
+    this.ui.trafficSignalStack?.querySelectorAll('.signal-lamp').forEach((lamp) => {
+      lamp.classList.toggle('active', lamp.dataset.signal === light.signal);
+    });
+  }
+
+  hideTrafficSignalHud() {
+    this.ui.trafficSignalHud?.classList.add('hidden');
+  }
+
+  getTrafficSignalColor(signal, dim = false) {
+    if (signal === 'green') return dim ? 0x244535 : 0x31d67b;
+    if (signal === 'yellow') return dim ? 0x5f4d20 : 0xffcf42;
+    return dim ? 0x5a1c24 : 0xff2438;
+  }
+
+  setTrafficSignalCleared(light) {
     light.group?.traverse((child) => {
-      if (child.name === 'redSignalLamp' && child.material) {
+      if (child.name === 'trafficSignalLamp' && child.material) {
         child.material.color?.setHex(0x405056);
         child.material.transparent = true;
         child.material.opacity = 0.3;
@@ -2893,6 +2942,7 @@ export class KathmanduChaos {
     this.running = false;
     this.pausedByOverlay = true;
     this.paused = false;
+    this.hideTrafficSignalHud();
     if (this.tutorialCoach.active) {
       this.markTutorialSeen();
       this.tutorialCoach.active = false;
@@ -3084,6 +3134,7 @@ export class KathmanduChaos {
     this.running = false;
     this.pausedByOverlay = true;
     this.hideTutorialCoach();
+    this.hideTrafficSignalHud();
     this.ui.garage?.classList.add('hidden');
     this.ui.overlay?.classList.remove('loading');
     this.ui.overlayText.textContent = text;

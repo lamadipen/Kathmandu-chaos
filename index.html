@@ -51,6 +51,15 @@
         </div>
       </section>
 
+      <section class="traffic-signal-hud hidden" id="trafficSignalHud" aria-live="polite">
+        <span id="trafficSignalDistance">Signal ahead</span>
+        <div class="signal-stack" id="trafficSignalStack" aria-label="Upcoming traffic signal">
+          <i class="signal-lamp red" data-signal="red"></i>
+          <i class="signal-lamp yellow" data-signal="yellow"></i>
+          <i class="signal-lamp green" data-signal="green"></i>
+        </div>
+      </section>
+
       <section class="minimap" id="minimap">
         <span>Start</span>
         <div class="minimap-track" id="minimapTrack">

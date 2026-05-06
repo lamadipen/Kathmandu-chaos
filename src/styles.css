@@ -231,6 +231,91 @@ body {
   font-weight: 900;
 }
 
+.traffic-signal-hud {
+  position: fixed;
+  top: 166px;
+  left: 50%;
+  z-index: 6;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 224px;
+  padding: 8px 10px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 8px;
+  background: rgb(10 15 18 / 70%);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 26%);
+  transform: translateX(-50%);
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+}
+
+.traffic-signal-hud > span {
+  color: #dbe5ec;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.signal-stack {
+  display: flex;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #172026, #090d10);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 8%), 0 10px 24px rgb(0 0 0 / 34%);
+}
+
+.signal-lamp {
+  display: block;
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgb(0 0 0 / 34%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 42% 36%, rgb(255 255 255 / 42%) 0 8%, transparent 9%),
+    radial-gradient(circle, var(--lamp-dim) 0 56%, rgb(0 0 0 / 54%) 62% 100%);
+  box-shadow: inset 0 -5px 9px rgb(0 0 0 / 40%);
+  opacity: 0.42;
+}
+
+.signal-lamp.red {
+  --lamp-dim: #5a1c24;
+  --lamp-on: #ff2438;
+}
+
+.signal-lamp.yellow {
+  --lamp-dim: #5f4d20;
+  --lamp-on: #ffcf42;
+}
+
+.signal-lamp.green {
+  --lamp-dim: #244535;
+  --lamp-on: #31d67b;
+}
+
+.signal-lamp.active {
+  background:
+    radial-gradient(circle at 40% 34%, rgb(255 255 255 / 70%) 0 7%, transparent 8%),
+    radial-gradient(circle, var(--lamp-on) 0 58%, color-mix(in srgb, var(--lamp-on) 54%, #000000) 64% 100%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--lamp-on) 72%, transparent), inset 0 -5px 10px rgb(0 0 0 / 24%);
+  opacity: 1;
+}
+
+.traffic-signal-hud.red {
+  border-color: rgb(255 36 56 / 44%);
+}
+
+.traffic-signal-hud.yellow {
+  border-color: rgb(255 207 66 / 44%);
+}
+
+.traffic-signal-hud.green {
+  border-color: rgb(49 214 123 / 44%);
+}
+
 .target-arrow {
   width: 30px;
   height: 30px;
@@ -1293,6 +1378,27 @@ button:focus-visible {
   .target-arrow {
     width: 25px;
     height: 25px;
+  }
+
+  .traffic-signal-hud {
+    top: calc(210px + env(safe-area-inset-top));
+    width: 188px;
+    padding: 7px 8px;
+  }
+
+  .traffic-signal-hud > span {
+    font-size: 0.54rem;
+  }
+
+  .signal-stack {
+    gap: 7px;
+    padding: 6px 8px;
+  }
+
+  .signal-lamp {
+    width: 30px;
+    height: 30px;
+    border-width: 2px;
   }
 
   .feedback {
