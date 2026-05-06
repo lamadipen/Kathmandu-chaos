@@ -11,6 +11,7 @@ import {
   createPassenger as createPassengerMesh,
   createPassengerAccessories,
   createPoliceAccessories,
+  createPowerUp,
   createPrayerFlags,
   createRoadHazard,
   createRouteLandmark,
@@ -123,6 +124,44 @@ const passengerRequests = [
     tone: 'Street-smart passenger'
   }
 ];
+const powerUpConfigs = {
+  boost: {
+    id: 'boost',
+    label: 'Battery Boost',
+    badge: 'BOOST',
+    duration: 6.5,
+    score: 45,
+    color: '#ffcf42',
+    message: 'Battery boost'
+  },
+  shield: {
+    id: 'shield',
+    label: 'Blessing Shield',
+    badge: 'SHIELD',
+    duration: 10,
+    score: 35,
+    color: '#7bed9f',
+    message: 'Blessing shield'
+  },
+  magnet: {
+    id: 'magnet',
+    label: 'Fare Magnet',
+    badge: 'MAGNET',
+    duration: 8,
+    score: 40,
+    color: '#74c0fc',
+    message: 'Fare magnet'
+  },
+  doubleFare: {
+    id: 'doubleFare',
+    label: 'Double Fare',
+    badge: '2X FARE',
+    duration: 7,
+    score: 30,
+    color: '#ff8fab',
+    message: 'Double fare'
+  }
+};
 const routeVisualProfiles = {
   market: {
     sky: 0xc7ecff,
@@ -214,6 +253,7 @@ export class KathmanduChaos {
     this.clock = new THREE.Clock();
     this.entities = [];
     this.pickups = [];
+    this.powerUps = [];
     this.hazards = [];
     this.redLights = [];
     this.eventZones = [];
@@ -236,6 +276,7 @@ export class KathmanduChaos {
     this.musicStep = 0;
     this.ambientStep = 0;
     this.hornPulse = 0;
+    this.activePowerUps = [];
     this.paused = false;
     this.routeIntro = { active: false, age: 0, duration: 3.2 };
     this.tutorialCoach = { active: false, age: 0, stage: 'intro', completeTimer: 0 };
@@ -1323,6 +1364,7 @@ export class KathmanduChaos {
       comboTimer: 0,
       comboBonus: 0,
       eventBonus: 0,
+      powerUpBonus: 0,
       landmarkBonus: 0,
       maxCombo: 1,
       collisionPenalty: 0,
@@ -1334,6 +1376,7 @@ export class KathmanduChaos {
     this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
     this.entities = [];
     this.pickups = [];
+    this.powerUps = [];
     this.hazards = [];
     this.redLights = [];
     this.bonusObjectives = [];
@@ -1346,6 +1389,7 @@ export class KathmanduChaos {
     this.passengerBarkTimer = 0;
     this.passengerCalloutTimer = 0;
     this.hornPulse = 0;
+    this.activePowerUps = [];
     this.routeIntroLabels = [];
     this.nextAmbientTime = this.audio ? this.audio.ctx.currentTime + 0.25 : 0;
     this.ambientStep = 0;
@@ -1944,6 +1988,7 @@ export class KathmanduChaos {
 
   populateRoute() {
     this.addPassengers();
+    this.addPowerUps();
     this.addObstacles('car', this.level.traffic);
     this.addObstacles('cow', this.level.cows);
     this.addObstacles('cyclist', this.level.cyclists);
@@ -2127,6 +2172,47 @@ export class KathmanduChaos {
     texture.colorSpace = THREE.SRGBColorSpace;
     passengerCalloutTextureCache.set(key, texture);
     return texture;
+  }
+
+  addPowerUps() {
+    const types = ['boost', 'shield', 'magnet', 'doubleFare'];
+    const count = Math.max(3, Math.min(7, Math.floor(this.level.length / 245)));
+    const start = -120;
+    const end = -this.level.length + 115;
+    for (let i = 0; i < count; i += 1) {
+      const type = types[(i + this.levelIndex) % types.length];
+      const { x, z } = this.findPowerUpSlot(start, end, i, count);
+      const mesh = createPowerUp(type);
+      mesh.position.set(x, 0.04, z);
+      mesh.rotation.y = this.getRoadAngle(z);
+      this.scene.add(mesh);
+      this.powerUps.push({
+        type,
+        config: powerUpConfigs[type],
+        mesh,
+        collected: false,
+        x,
+        z,
+        wobble: rand(0, Math.PI * 2)
+      });
+      this.spawnedSlots.push({ x, z, radius: 8 });
+    }
+  }
+
+  findPowerUpSlot(start, end, index, count) {
+    const span = Math.abs(end - start);
+    const segment = span / Math.max(1, count);
+    const lanePool = [LANES[1], LANES[2], LANES[3]];
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const lane = lanePool[(index + attempt) % lanePool.length];
+      const z = clamp(start - segment * (index + 0.45) + rand(-segment * 0.28, segment * 0.28), end, start);
+      const x = this.getRoadX(lane, z);
+      const blockedSlot = this.spawnedSlots.some((slot) => Math.abs(slot.z - z) < slot.radius + 8 && Math.abs(slot.x - x) < 3.2);
+      const nearPassenger = this.pickups.some((pickup) => Math.abs(pickup.z - z) < 20 && Math.abs(pickup.x - x) < 3.6);
+      if (!blockedSlot && !nearPassenger) return { x, z };
+    }
+    const fallbackZ = clamp(start - segment * (index + 0.5), end, start);
+    return { x: this.getRoadX(LANES[2], fallbackZ), z: fallbackZ };
   }
 
   async attachPassengerModel(group, index) {
@@ -2420,6 +2506,7 @@ export class KathmanduChaos {
     this.passengerCalloutTimer = Math.max(0, this.passengerCalloutTimer - delta);
     this.hornPulse = Math.max(0, this.hornPulse - delta);
     this.state.comboTimer = Math.max(0, this.state.comboTimer - delta);
+    this.updatePowerUps(delta);
     this.updateTutorialCoach(delta);
     this.updateRedLightSignals(delta);
     if (this.state.comboTimer <= 0 && this.state.combo > 1) {
@@ -2434,10 +2521,11 @@ export class KathmanduChaos {
     const batteryBoost = this.progress.upgrades.battery * 1.7;
     const brakeBoost = this.progress.upgrades.brakes * 3.4;
     const handlingBoost = this.progress.upgrades.handling * 0.7;
+    const powerBoost = this.hasPowerUp('boost') ? 1 : 0;
     const accelerating = this.keys.has('w') || this.keys.has('arrowup') || this.touchInput.accelerate;
     const brake = this.keys.has(' ') || this.keys.has('s') || this.keys.has('arrowdown') || this.touchInput.brake;
-    const accel = accelerating ? 18.5 + batteryBoost : 6.8 + batteryBoost * 0.35;
-    const baseTopSpeed = (this.level.hill ? 30 : 35) + this.progress.upgrades.battery * 2.2;
+    const accel = accelerating ? 18.5 + batteryBoost + powerBoost * 9.5 : 6.8 + batteryBoost * 0.35 + powerBoost * 2.6;
+    const baseTopSpeed = (this.level.hill ? 30 : 35) + this.progress.upgrades.battery * 2.2 + powerBoost * 8.5;
     const topSpeed = nearbyPickup ? Math.min(baseTopSpeed, 16) : baseTopSpeed;
     this.state.speed += (brake ? -30 - brakeBoost : accel) * delta;
     this.state.speed -= this.state.speed * (this.level.wetRoad ? 0.07 : 0.045) * delta;
@@ -2461,6 +2549,7 @@ export class KathmanduChaos {
     this.playerBody.setNextKinematicTranslation(this.player.position);
 
     this.animateEntities(delta);
+    this.checkPowerUps();
     this.checkBonusObjectives();
     this.checkEventZones();
     this.checkRedLights();
@@ -2576,6 +2665,18 @@ export class KathmanduChaos {
           requestBadge.material.opacity = isTarget ? 1 : 0.78;
         }
       }
+    }
+    for (const powerUp of this.powerUps) {
+      if (powerUp.collected) continue;
+      powerUp.mesh.rotation.y += delta * 2.6;
+      powerUp.mesh.position.y = 0.04 + Math.sin(this.state.elapsed * 4.2 + powerUp.wobble) * 0.16;
+      const halo = powerUp.mesh.getObjectByName('powerUpHalo');
+      if (halo) {
+        const pulse = 1 + Math.sin(this.state.elapsed * 6 + powerUp.wobble) * 0.12;
+        halo.scale.set(pulse, pulse, pulse);
+      }
+      const billboard = powerUp.mesh.getObjectByName('powerUpBillboard');
+      if (billboard) billboard.quaternion.copy(this.camera.quaternion);
     }
   }
 
@@ -2780,6 +2881,10 @@ export class KathmanduChaos {
         this.spawnScorePopup(position, '+40', 'good');
         this.playTone(660, 0.08, 'triangle', 0.09);
       } else {
+        if (this.consumeShield(position, 'Shield absorbed red-light mistake')) {
+          this.setTrafficSignalCleared(light);
+          continue;
+        }
         this.state.hearts -= 1;
         this.state.collisions += 1;
         this.state.collisionPenalty += 70;
@@ -2928,11 +3033,13 @@ export class KathmanduChaos {
     this.state.comboTimer = 8;
     this.state.maxCombo = Math.max(this.state.maxCombo, this.state.combo);
 
-    const comboBonus = this.state.combo > 1 ? Math.round(pickup.value * (this.state.combo - 1) * 0.22) : 0;
-    this.state.passengerFare += pickup.value;
+    const fareMultiplier = this.hasPowerUp('doubleFare') ? 2 : 1;
+    const fareValue = pickup.value * fareMultiplier;
+    const comboBonus = this.state.combo > 1 ? Math.round(fareValue * (this.state.combo - 1) * 0.22) : 0;
+    this.state.passengerFare += fareValue;
     this.state.comboBonus += comboBonus;
-    this.state.score += pickup.value + comboBonus;
-    return comboBonus;
+    this.state.score += fareValue + comboBonus;
+    return { comboBonus, fareValue, multiplier: fareMultiplier };
   }
 
   evaluatePassengerRequest(pickup) {
@@ -3129,14 +3236,77 @@ export class KathmanduChaos {
     }
   }
 
+  updatePowerUps(delta) {
+    for (let i = this.activePowerUps.length - 1; i >= 0; i -= 1) {
+      const powerUp = this.activePowerUps[i];
+      powerUp.remaining -= delta;
+      if (powerUp.remaining <= 0 || powerUp.charges <= 0) {
+        this.activePowerUps.splice(i, 1);
+      }
+    }
+  }
+
+  hasPowerUp(type) {
+    return this.activePowerUps.some((powerUp) => powerUp.id === type && powerUp.remaining > 0 && powerUp.charges > 0);
+  }
+
+  getPowerUp(type) {
+    return this.activePowerUps.find((powerUp) => powerUp.id === type && powerUp.remaining > 0 && powerUp.charges > 0);
+  }
+
+  checkPowerUps() {
+    for (const powerUp of this.powerUps) {
+      if (powerUp.collected) continue;
+      const dx = Math.abs(this.player.position.x - powerUp.mesh.position.x);
+      const dz = Math.abs(this.player.position.z - powerUp.mesh.position.z);
+      if (dx >= 2.0 || dz >= 2.8) continue;
+
+      powerUp.collected = true;
+      powerUp.mesh.visible = false;
+      this.activatePowerUp(powerUp.type, powerUp.mesh.position);
+    }
+  }
+
+  activatePowerUp(type, position) {
+    const config = powerUpConfigs[type] ?? powerUpConfigs.boost;
+    const existing = this.activePowerUps.find((powerUp) => powerUp.id === type);
+    const charges = type === 'shield' ? 1 : 99;
+    if (existing) {
+      existing.remaining = Math.max(existing.remaining, config.duration);
+      existing.charges = Math.max(existing.charges, charges);
+    } else {
+      this.activePowerUps.push({ ...config, remaining: config.duration, charges });
+    }
+
+    this.state.powerUpBonus += config.score;
+    this.state.score += config.score;
+    this.spawnScorePopup(position, `${config.badge} +${config.score}`, 'combo');
+    this.showFeedback(`${config.message} active`, 'good');
+    this.playTone(type === 'boost' ? 1046 : type === 'shield' ? 880 : type === 'magnet' ? 740 : 1175, 0.11, 'triangle', 0.14);
+    this.playTone(type === 'doubleFare' ? 1568 : 1320, 0.13, 'triangle', 0.1, 0.08);
+  }
+
+  consumeShield(position, reason = 'Shield absorbed hit') {
+    const shield = this.getPowerUp('shield');
+    if (!shield) return false;
+    shield.charges -= 1;
+    shield.remaining = 0;
+    this.spawnScorePopup(position, 'SHIELD', 'combo');
+    this.showFeedback(reason, 'good');
+    this.playTone(640, 0.1, 'triangle', 0.14);
+    this.playTone(960, 0.12, 'triangle', 0.1, 0.08);
+    return true;
+  }
+
   checkPickups() {
     for (const pickup of this.pickups) {
       if (pickup.collected) continue;
       const dx = Math.abs(this.player.position.x - pickup.mesh.position.x);
       const dz = Math.abs(this.player.position.z - pickup.mesh.position.z);
-      if (dx < 2.15 && dz < 3.1) {
+      const magnet = this.hasPowerUp('magnet');
+      if (dx < (magnet ? 4.1 : 2.15) && dz < (magnet ? 5.8 : 3.1)) {
         pickup.collected = true;
-        const comboBonus = this.awardPickupFare(pickup);
+        const fareResult = this.awardPickupFare(pickup);
         const requestResult = this.evaluatePassengerRequest(pickup);
         this.state.passengers += 1;
         this.state.speed = Math.max(5, this.state.speed * 0.72);
@@ -3145,11 +3315,12 @@ export class KathmanduChaos {
         this.playPickupSound();
         this.playPassengerBarkSound(pickup.index);
         this.showPassengerBark(this.getPassengerBark(pickup));
-        const comboText = comboBonus > 0 ? ` x${this.state.combo} combo +${comboBonus}` : '';
+        const fareText = fareResult.multiplier > 1 ? ` 2x fare` : '';
+        const comboText = fareResult.comboBonus > 0 ? ` x${this.state.combo} combo +${fareResult.comboBonus}` : '';
         const requestText = requestResult.met ? ` ${requestResult.message}` : '';
-        this.showFeedback(`Passenger boarded +${pickup.value}${comboText}${requestText}`, 'good');
-        this.spawnScorePopup(pickup.mesh.position, `+${pickup.value}`, 'good');
-        if (comboBonus > 0) this.spawnScorePopup(pickup.mesh.position, `x${this.state.combo} +${comboBonus}`, 'combo');
+        this.showFeedback(`Passenger boarded +${fareResult.fareValue}${fareText}${comboText}${requestText}`, 'good');
+        this.spawnScorePopup(pickup.mesh.position, `+${fareResult.fareValue}`, fareResult.multiplier > 1 ? 'combo' : 'good');
+        if (fareResult.comboBonus > 0) this.spawnScorePopup(pickup.mesh.position, `x${this.state.combo} +${fareResult.comboBonus}`, 'combo');
         if (requestResult.met) this.spawnScorePopup(pickup.mesh.position, `${pickup.request.badge} +${requestResult.bonus}`, 'combo');
       }
     }
@@ -3169,6 +3340,10 @@ export class KathmanduChaos {
       hazard.cooldown = 1.1;
       if (hazard.type === 'barrier') {
         hazard.hit = true;
+        if (this.consumeShield(hazard.mesh.position, 'Shield cleared blocked lane')) {
+          hazard.mesh.rotation.z = 0.22;
+          continue;
+        }
         this.state.hearts -= 1;
         this.state.collisionPenalty += 80;
         this.state.collisions += 1;
@@ -3184,6 +3359,9 @@ export class KathmanduChaos {
         hazard.mesh.rotation.z = 0.22;
       } else if (hazard.type === 'pothole') {
         hazard.hit = true;
+        if (this.consumeShield(hazard.mesh.position, 'Shield smoothed the pothole')) {
+          continue;
+        }
         this.state.collisionPenalty += 35;
         this.state.score = Math.max(0, this.state.score - 35);
         this.state.speed = Math.max(5, this.state.speed * 0.58);
@@ -3212,6 +3390,10 @@ export class KathmanduChaos {
       const dz = Math.abs(this.player.position.z - entity.mesh.position.z);
       if (dx < 1.9 && dz < 2.45) {
         entity.hit = true;
+        if (this.consumeShield(entity.mesh.position, `Shield absorbed ${obstacleNames[entity.type]} hit`)) {
+          entity.mesh.rotation.z = 0.18;
+          break;
+        }
         this.state.hearts -= entity.penalty;
         const penalty = entity.penalty * 90;
         this.state.collisionPenalty += penalty;
@@ -3260,7 +3442,8 @@ export class KathmanduChaos {
     const cleanBonus = completed && this.state.collisions === 0 ? 220 : completed && this.state.collisions <= 1 ? 90 : 0;
     const landmarkBonus = completed ? this.state.landmarkBonus : 0;
     const eventBonus = completed ? this.state.eventBonus : 0;
-    const finalFare = Math.max(0, this.state.passengerFare + this.state.comboBonus + landmarkBonus + eventBonus + timeBonus + cleanBonus - this.state.collisionPenalty);
+    const powerUpBonus = completed ? this.state.powerUpBonus : 0;
+    const finalFare = Math.max(0, this.state.passengerFare + this.state.comboBonus + landmarkBonus + eventBonus + powerUpBonus + timeBonus + cleanBonus - this.state.collisionPenalty);
     const passengerRatio = this.state.passengers / this.level.passengerGoal;
     let stars = 0;
     if (completed) {
@@ -3278,6 +3461,7 @@ export class KathmanduChaos {
       comboBonus: this.state.comboBonus,
       landmarkBonus,
       eventBonus,
+      powerUpBonus,
       eventName: this.level.event?.name ?? '',
       bonusObjectives: this.bonusObjectives.map((objective) => ({
         label: objective.label,
@@ -3344,6 +3528,7 @@ export class KathmanduChaos {
     if (this.ui.resultsComboBonus) this.ui.resultsComboBonus.textContent = result.comboBonus.toString();
     if (this.ui.resultsLandmarkBonus) this.ui.resultsLandmarkBonus.textContent = result.landmarkBonus.toString();
     if (this.ui.resultsEventBonus) this.ui.resultsEventBonus.textContent = result.eventBonus.toString();
+    if (this.ui.resultsPowerUpBonus) this.ui.resultsPowerUpBonus.textContent = result.powerUpBonus.toString();
     this.ui.resultsPenalty.textContent = result.collisionPenalty ? `-${result.collisionPenalty}` : '0';
     this.ui.resultsPassengers.textContent = `${result.passengers}/${result.passengerGoal}`;
     this.ui.resultsBest.textContent = result.newBest.toString();
@@ -3386,6 +3571,7 @@ export class KathmanduChaos {
     if (result.stars === 3) badges.push({ icon: '3', tone: 'good', title: 'Three-Star Run', detail: 'Fast and clean.' });
     if (result.collisions === 0) badges.push({ icon: 'C', tone: 'good', title: 'Clean Driving', detail: `+${result.cleanBonus} clean bonus` });
     if (result.maxCombo >= 3) badges.push({ icon: 'x', tone: 'good', title: `x${result.maxCombo} Combo`, detail: `+${result.comboBonus} combo fare` });
+    if (result.powerUpBonus > 0) badges.push({ icon: 'P', tone: 'good', title: 'Power-Up Route', detail: `+${result.powerUpBonus} power-up bonus` });
     const completedBonuses = result.bonusObjectives?.filter((objective) => objective.completed) ?? [];
     if (completedBonuses.length > 0) badges.push({ icon: 'L', tone: 'good', title: 'Landmark Bonus', detail: `${completedBonuses.length}/${result.bonusObjectives.length} earned +${result.landmarkBonus}` });
     const completedEvents = result.eventObjectives?.filter((objective) => objective.completed) ?? [];
@@ -3435,8 +3621,34 @@ export class KathmanduChaos {
     if (this.ui.passengerBark && this.passengerBarkTimer <= 0) {
       this.ui.passengerBark.classList.remove('show');
     }
+    this.renderPowerUpHud();
     this.renderTargetGuide();
     this.renderMinimap();
+  }
+
+  renderPowerUpHud() {
+    if (!this.ui.powerUpHud) return;
+    const visiblePowerUps = this.activePowerUps.filter((powerUp) => powerUp.remaining > 0 && powerUp.charges > 0);
+    if (!visiblePowerUps.length) {
+      this.ui.powerUpHud.classList.add('hidden');
+      this.ui.powerUpHud.innerHTML = '';
+      return;
+    }
+
+    this.ui.powerUpHud.classList.remove('hidden');
+    this.ui.powerUpHud.innerHTML = visiblePowerUps
+      .map((powerUp) => {
+        const percent = clamp(powerUp.remaining / powerUp.duration, 0, 1) * 100;
+        const charges = powerUp.id === 'shield' ? ` · ${powerUp.charges}` : '';
+        return `
+          <div class="power-up-pill" style="--power-color:${powerUp.color}; --power-left:${percent}%">
+            <strong>${powerUp.badge}</strong>
+            <span>${Math.ceil(powerUp.remaining)}s${charges}</span>
+            <i></i>
+          </div>
+        `;
+      })
+      .join('');
   }
 
   renderMinimapMarkers() {
@@ -3450,6 +3662,7 @@ export class KathmanduChaos {
       this.ui.minimapTrack.appendChild(dot);
     };
     this.pickups.forEach((pickup) => addDot('passenger-dot', pickup.z));
+    this.powerUps.forEach((powerUp) => addDot(`powerup-dot ${powerUp.type}-dot`, powerUp.z));
     this.eventZones?.forEach((zone) => addDot('event-dot', zone.z));
     this.entities
       .filter((entity) => entity.type === 'police')
@@ -3466,6 +3679,10 @@ export class KathmanduChaos {
     this.pickups.forEach((pickup, index) => {
       const dot = this.ui.minimapTrack?.querySelectorAll('.passenger-dot')[index];
       if (dot) dot.classList.toggle('collected', pickup.collected);
+    });
+    this.powerUps.forEach((powerUp, index) => {
+      const dot = this.ui.minimapTrack?.querySelectorAll('.powerup-dot')[index];
+      if (dot) dot.classList.toggle('collected', powerUp.collected);
     });
     if (this.levelIndex >= 2) {
       this.hazards.forEach((hazard, index) => {

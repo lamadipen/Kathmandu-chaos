@@ -70,6 +70,7 @@ On mobile, use the on-screen controls:
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
 - Garage gameplay toggles for festival/event routes and red-light checkpoints
 - Campaign progress saved with `localStorage`
+- Fun power-ups for battery boost, blessing shield, fare magnet, and double-fare passenger streaks
 - Pause/settings menu with resume, restart, garage, audio toggle, and reset progress
 - Route minimap with passenger and police markers
 - Upgradeable tempo stats for battery, brakes, and handling

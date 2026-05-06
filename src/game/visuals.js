@@ -474,6 +474,46 @@ function randLike(seed) {
   return Math.sin(seed * 12.9898) * 0.5;
 }
 
+export function createPowerUp(type = 'boost') {
+  const group = new THREE.Group();
+  group.name = `powerUp-${type}`;
+  const configs = {
+    boost: { color: 0xffcf42, core: 0xff9f1c, symbol: 'B' },
+    shield: { color: 0x7bed9f, core: 0x2f9e44, symbol: 'S' },
+    magnet: { color: 0x74c0fc, core: 0x1971c2, symbol: 'M' },
+    doubleFare: { color: 0xff8fab, core: 0xd94848, symbol: '2X' }
+  };
+  const config = configs[type] ?? configs.boost;
+  const glow = mat(config.color, { emissive: config.color, emissiveIntensity: 0.5, transparent: true, opacity: 0.82, roughness: 0.32 });
+  const core = mat(config.core, { emissive: config.core, emissiveIntensity: 0.36, roughness: 0.38 });
+  const dark = mat(0x101418, { roughness: 0.62 });
+
+  group.add(mesh(new THREE.TorusGeometry(0.72, 0.06, 10, 42), glow, [0, 0.08, 0], [Math.PI / 2, 0, 0]));
+  group.add(mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.14, 6), core, [0, 0.46, 0], [0, Math.PI / 6, 0]));
+  group.add(mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.08, 24), glow, [0, 0.58, 0]));
+
+  if (type === 'boost') {
+    group.add(mesh(new THREE.ConeGeometry(0.22, 0.7, 4), dark, [0, 0.92, 0], [0, Math.PI / 4, 0]));
+  } else if (type === 'shield') {
+    group.add(mesh(new THREE.SphereGeometry(0.38, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), glow, [0, 0.88, 0]));
+  } else if (type === 'magnet') {
+    group.add(mesh(new THREE.TorusGeometry(0.34, 0.08, 10, 24, Math.PI * 1.18), glow, [0, 0.88, 0], [0, 0, Math.PI]));
+    group.add(mesh(new THREE.BoxGeometry(0.16, 0.18, 0.16), dark, [-0.31, 0.72, 0]));
+    group.add(mesh(new THREE.BoxGeometry(0.16, 0.18, 0.16), dark, [0.31, 0.72, 0]));
+  } else {
+    const board = textPlane(config.symbol, 0.92, 0.36, '#ff8fab', '#141414');
+    board.name = 'powerUpBillboard';
+    board.position.set(0, 1.0, 0);
+    group.add(board);
+  }
+
+  const halo = mesh(new THREE.SphereGeometry(0.98, 18, 12), mat(config.color, { emissive: config.color, emissiveIntensity: 0.22, transparent: true, opacity: 0.18, roughness: 0.2 }), [0, 0.72, 0]);
+  halo.name = 'powerUpHalo';
+  group.add(halo);
+
+  return markShadows(group);
+}
+
 export function createStreetStall(label = 'MOMO') {
   const group = new THREE.Group();
   group.add(mesh(new THREE.BoxGeometry(2.5, 1.0, 1.45), mat(0x8f3f2d), [0, 0.5, 0]));
