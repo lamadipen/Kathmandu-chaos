@@ -398,6 +398,13 @@ body {
   box-shadow: 0 0 0 2px rgb(249 115 22 / 18%);
 }
 
+.minimap-dot.event-dot {
+  width: 10px;
+  height: 10px;
+  background: #ff9f1c;
+  box-shadow: 0 0 0 3px rgb(255 159 28 / 18%);
+}
+
 .minimap-dot.collected {
   opacity: 0.25;
 }
@@ -978,7 +985,7 @@ body {
 }
 
 .garage-actions {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .audio-control {
@@ -1003,6 +1010,12 @@ body {
   min-height: 42px;
   padding: 8px;
   font-size: 0.78rem;
+}
+
+.garage-actions .option-toggle.active {
+  color: #111814;
+  background: #ffcf42;
+  border-color: #ffcf42;
 }
 
 button:disabled {

@@ -22,6 +22,17 @@ export const LEVELS = [
       { type: 'chowk', label: 'Asan Chowk', at: 0.54, side: 1 },
       { type: 'gateArch', label: 'Asan Gate', at: 0.82 }
     ],
+    event: {
+      id: 'indra-jatra',
+      name: 'Indra Jatra Crowd',
+      label: 'इन्द्र जात्रा',
+      hint: 'Festival lanes are packed. Drive clean through the crowd gates.',
+      rule: 'clean',
+      zones: [
+        { at: 0.31, reward: 110, label: 'Clean through Indra Jatra gate' },
+        { at: 0.64, reward: 130, label: 'No bump past the masked-dance crowd' }
+      ]
+    },
     bonusObjectives: [
       { type: 'passengersBefore', landmark: 'Asan Chowk', count: 2, reward: 160, label: 'Board 2 passengers before Asan Chowk' },
       { type: 'speedThrough', landmark: 'Asan Gate', minSpeed: 18, reward: 130, label: 'Keep tempo above 18 through Asan Gate' }
@@ -56,6 +67,18 @@ export const LEVELS = [
       { type: 'temple', label: 'Boudha Stupa', at: 0.5, side: 1 },
       { type: 'chowk', label: 'Chabahil Chowk', at: 0.76, side: -1 }
     ],
+    event: {
+      id: 'butter-lamp',
+      name: 'Butter Lamp Evening',
+      label: 'दीप माला',
+      hint: 'Pilgrims line the road. Roll gently near the lamp rows.',
+      rule: 'slow',
+      maxSpeed: 16,
+      zones: [
+        { at: 0.42, reward: 130, label: 'Slow past butter lamps' },
+        { at: 0.7, reward: 150, label: 'Gentle roll through pilgrim crowd' }
+      ]
+    },
     bonusObjectives: [
       { type: 'cleanSegment', landmark: 'Boudha Stupa', reward: 180, label: 'Reach Boudha Stupa without a collision' },
       { type: 'passengersBefore', landmark: 'Chabahil Chowk', count: 3, reward: 170, label: 'Board 3 passengers before Chabahil Chowk' }
@@ -90,6 +113,18 @@ export const LEVELS = [
       { type: 'chowk', label: 'Mangal Bazaar', at: 0.5, side: -1 },
       { type: 'temple', label: 'Durbar Temple', at: 0.78, side: 1 }
     ],
+    event: {
+      id: 'craft-fair',
+      name: 'Patan Craft Fair',
+      label: 'हस्तकला मेला',
+      hint: 'Craft stalls pull big crowds. Chain pickups before the fair gates.',
+      rule: 'combo',
+      minCombo: 2,
+      zones: [
+        { at: 0.44, reward: 150, label: 'Arrive at craft fair with x2 combo' },
+        { at: 0.72, reward: 180, label: 'Keep x2 combo past pottery stalls' }
+      ]
+    },
     bonusObjectives: [
       { type: 'cleanSegment', landmark: 'Mangal Bazaar', reward: 180, label: 'Reach Mangal Bazaar cleanly' },
       { type: 'comboBefore', landmark: 'Durbar Temple', combo: 3, reward: 210, label: 'Build a x3 combo before Durbar Temple' }
@@ -125,6 +160,18 @@ export const LEVELS = [
       { type: 'busPark', label: 'Kalanki Stop', at: 0.52, side: -1 },
       { type: 'gateArch', label: 'Ring Road Gate', at: 0.8 }
     ],
+    event: {
+      id: 'monsoon-bus-rush',
+      name: 'Monsoon Bus Rush',
+      label: 'मनसुन यात्रा',
+      hint: 'Umbrellas crowd the bus stops. Slow down through wet event zones.',
+      rule: 'slow',
+      maxSpeed: 15,
+      zones: [
+        { at: 0.36, reward: 170, label: 'Slow through umbrella crowd' },
+        { at: 0.62, reward: 190, label: 'Careful roll past packed bus stop' }
+      ]
+    },
     bonusObjectives: [
       { type: 'cleanSegment', landmark: 'Bishnumati Bridge', reward: 240, label: 'Cross Bishnumati Bridge cleanly' },
       { type: 'passengersBefore', landmark: 'Kalanki Stop', count: 4, reward: 210, label: 'Board 4 passengers before Kalanki Stop' }
@@ -160,6 +207,17 @@ export const LEVELS = [
       { type: 'gateArch', label: 'Swayambhu Gate', at: 0.48 },
       { type: 'temple', label: 'Hill Stupa', at: 0.76, side: -1 }
     ],
+    event: {
+      id: 'tihar-lights',
+      name: 'Tihar Lights Climb',
+      label: 'तिहार बत्ती',
+      hint: 'Diyo lights mark the climb. Stay clean to earn festival tips.',
+      rule: 'clean',
+      zones: [
+        { at: 0.4, reward: 180, label: 'Clean through Tihar light trail' },
+        { at: 0.68, reward: 220, label: 'No hit before Swayambhu diyos' }
+      ]
+    },
     bonusObjectives: [
       { type: 'speedThrough', landmark: 'Swayambhu Gate', minSpeed: 17, reward: 220, label: 'Keep speed above 17 through Swayambhu Gate' },
       { type: 'cleanSegment', landmark: 'Hill Stupa', reward: 280, label: 'Reach Hill Stupa cleanly' }

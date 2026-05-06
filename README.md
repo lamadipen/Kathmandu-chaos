@@ -68,6 +68,7 @@ On mobile, use the on-screen controls:
 - Responsive HUD and overlay UI
 - HUD speed meter with live km/h readout
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
+- Garage gameplay toggles for festival/event routes and red-light checkpoints
 - Campaign progress saved with `localStorage`
 - Pause/settings menu with resume, restart, garage, audio toggle, and reset progress
 - Route minimap with passenger and police markers
@@ -81,6 +82,7 @@ On mobile, use the on-screen controls:
 - Route-specific passenger personality barks for commuters, students, vendors, tourists, and elders
 - Passenger callout bubbles and approach barks so waiting customers actively call for the tempo
 - Route intro camera labels that spotlight key landmarks before the run starts
+- Festival/event routes with route-specific arches, lamp rows, crowds, minimap markers, and optional event-tip bonuses
 - Optional landmark bonus objectives that award extra fare without blocking route completion
 - Main title/story sequence that frames Maya's permit run before entering the garage
 - In-game first-run coach prompts plus a garage `Practice tips` replay for pickups, horn use, braking, and finish gates

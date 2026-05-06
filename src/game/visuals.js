@@ -407,6 +407,73 @@ export function createMarigoldGarland(width = 3.2) {
   return markShadows(group);
 }
 
+export function createFestivalArch(label = 'JATRA', accent = 0xffcf42, theme = 'market') {
+  const group = new THREE.Group();
+  group.name = 'festivalArch';
+  const poleMat = mat(theme === 'durbar' ? 0x7a3f2a : 0x33302a, { roughness: 0.72 });
+  const trimMat = mat(accent, { roughness: 0.44, metalness: 0.05 });
+  const darkMat = mat(0x18181b, { roughness: 0.68 });
+
+  for (const x of [-8.9, 8.9]) {
+    group.add(mesh(new THREE.BoxGeometry(0.42, 5.3, 0.42), poleMat, [x, 2.65, 0]));
+    group.add(mesh(new THREE.BoxGeometry(1.2, 0.28, 0.62), darkMat, [x, 0.18, 0]));
+  }
+  group.add(mesh(new THREE.BoxGeometry(18.6, 0.36, 0.34), poleMat, [0, 5.15, 0]));
+  group.add(mesh(new THREE.BoxGeometry(17.2, 0.42, 0.2), trimMat, [0, 4.78, -0.1]));
+
+  const sign = textPlane(label, 5.2, 0.78, `#${accent.toString(16).padStart(6, '0')}`, '#141414');
+  sign.position.set(0, 4.25, -0.3);
+  group.add(sign);
+
+  const garland = createMarigoldGarland(6.2);
+  garland.position.set(0, 3.72, -0.32);
+  group.add(garland);
+
+  const colors = theme === 'stupa' || theme === 'swayambhu'
+    ? [0x2b6cb0, 0xffffff, 0xd94848, 0x2f9e44, 0xffcf42]
+    : [0xd94848, 0xffcf42, 0x2f9e44, 0xf8f1dc, 0x2b6cb0];
+  for (let i = 0; i < 15; i += 1) {
+    const x = -7 + i;
+    const y = 5.58 - Math.sin((i / 14) * Math.PI) * 0.5;
+    group.add(mesh(new THREE.BoxGeometry(0.34, 0.42, 0.035), mat(colors[i % colors.length], { roughness: 0.62 }), [x, y, -0.05], [0, 0, Math.sin(i) * 0.12]));
+  }
+
+  return markShadows(group);
+}
+
+export function createFestivalLampRow(width = 6, accent = 0xffcf42) {
+  const group = new THREE.Group();
+  group.name = 'festivalLampRow';
+  group.add(mesh(new THREE.BoxGeometry(width + 0.4, 0.05, 0.08), mat(0x3b2f2a, { roughness: 0.9 }), [0, 0.04, 0]));
+  const count = 9;
+  for (let i = 0; i < count; i += 1) {
+    const x = -width / 2 + (i / (count - 1)) * width;
+    group.add(mesh(new THREE.CylinderGeometry(0.1, 0.16, 0.08, 10), mat(0x8f3f2d, { roughness: 0.78 }), [x, 0.1, 0]));
+    group.add(mesh(new THREE.SphereGeometry(0.1, 10, 8), mat(i % 3 === 0 ? 0xff9f1c : accent, { emissive: accent, emissiveIntensity: 0.52 }), [x, 0.21, 0]));
+  }
+  return markShadows(group);
+}
+
+export function createFestivalCrowdCluster(accent = 0xffcf42) {
+  const group = new THREE.Group();
+  group.name = 'festivalCrowdCluster';
+  const clothes = [0xd94848, 0x2b6cb0, 0x2f9e44, 0xffcf42, 0x8f3f2d, accent];
+  for (let i = 0; i < 8; i += 1) {
+    const person = new THREE.Group();
+    const x = (i % 4 - 1.5) * 0.58 + randLike(i) * 0.18;
+    const z = (Math.floor(i / 4) - 0.5) * 0.62 + randLike(i + 3) * 0.16;
+    person.add(mesh(new THREE.CapsuleGeometry(0.13, 0.42, 5, 8), mat(clothes[i % clothes.length]), [x, 0.45, z]));
+    person.add(mesh(new THREE.SphereGeometry(0.14, 10, 8), mat(pick(skinTones, i)), [x, 0.88, z]));
+    if (i % 3 === 0) person.add(mesh(new THREE.ConeGeometry(0.17, 0.16, 4), mat(accent), [x, 1.04, z], [0, Math.PI / 4, 0]));
+    group.add(person);
+  }
+  return markShadows(group);
+}
+
+function randLike(seed) {
+  return Math.sin(seed * 12.9898) * 0.5;
+}
+
 export function createStreetStall(label = 'MOMO') {
   const group = new THREE.Group();
   group.add(mesh(new THREE.BoxGeometry(2.5, 1.0, 1.45), mat(0x8f3f2d), [0, 0.5, 0]));

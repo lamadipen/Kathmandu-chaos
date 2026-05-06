@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { LEVELS, LANES } from './levels.js';
 import {
+  createFestivalArch,
+  createFestivalCrowdCluster,
+  createFestivalLampRow,
   createLandmark,
   createMarigoldGarland,
   createObstacle,
@@ -213,6 +216,7 @@ export class KathmanduChaos {
     this.pickups = [];
     this.hazards = [];
     this.redLights = [];
+    this.eventZones = [];
     this.trafficLaneSlots = new Map();
     this.effects = [];
     this.weather = null;
@@ -352,6 +356,8 @@ export class KathmanduChaos {
       upgrades: { battery: 0, brakes: 0, handling: 0 },
       audioMuted: false,
       audioVolume: 0.8,
+      festivalsEnabled: true,
+      redLightsEnabled: true,
       skins: ['classic'],
       selectedSkin: 'classic',
       tutorialSeen: false
@@ -370,6 +376,8 @@ export class KathmanduChaos {
         },
         audioMuted: Boolean(saved?.audioMuted),
         audioVolume: clamp(Number(saved?.audioVolume ?? 0.8), 0, 1),
+        festivalsEnabled: saved?.festivalsEnabled !== false,
+        redLightsEnabled: saved?.redLightsEnabled !== false,
         skins: Array.from(new Set(['classic', ...(Array.isArray(saved?.skins) ? saved.skins : [])])).filter((id) => tempoSkins.some((skin) => skin.id === id)),
         selectedSkin: tempoSkins.some((skin) => skin.id === saved?.selectedSkin) ? saved.selectedSkin : 'classic',
         tutorialSeen: Boolean(saved?.tutorialSeen)
@@ -383,9 +391,19 @@ export class KathmanduChaos {
     window.localStorage.setItem(progressKey, JSON.stringify(this.progress));
   }
 
+  areFestivalsEnabled() {
+    return this.progress.festivalsEnabled !== false;
+  }
+
+  areRedLightsEnabled() {
+    return this.progress.redLightsEnabled !== false;
+  }
+
   setupGarage() {
     this.ui.garageStart?.addEventListener('click', () => this.startSelectedRoute());
     this.ui.audioToggle?.addEventListener('click', () => this.toggleAudio());
+    this.ui.festivalToggle?.addEventListener('click', () => this.toggleGameplayOption('festivalsEnabled'));
+    this.ui.redLightToggle?.addEventListener('click', () => this.toggleGameplayOption('redLightsEnabled'));
     this.ui.tutorialButton?.addEventListener('click', () => this.startRoute(this.selectedRoute, { tutorial: true }));
     this.ui.creditsButton?.addEventListener('click', () => this.showCredits('garage'));
     this.ui.pauseAudioToggle?.addEventListener('click', () => this.toggleAudio());
@@ -592,12 +610,15 @@ export class KathmanduChaos {
   createRouteIntroLabels() {
     this.clearRouteIntroLabels();
     const visual = this.getRouteVisualProfile();
-    const landmarks = this.level.landmarks ?? [];
+    const eventLabel = this.level.event && this.areFestivalsEnabled()
+      ? [{ type: 'event', label: this.level.event.name, at: this.level.event.zones?.[0]?.at ?? 0.35, side: 0 }]
+      : [];
+    const landmarks = [...eventLabel, ...(this.level.landmarks ?? [])];
     this.routeIntroLabels = landmarks.map((item, index) => {
       const z = -this.level.length * item.at;
       const side = item.type === 'gateArch' || item.type === 'riverBridge' ? 0 : item.side ?? 1;
       const x = this.getRoadCenter(z) + (side === 0 ? 0 : side * 14.2);
-      const y = item.type === 'gateArch' ? 7.1 : item.type === 'riverBridge' ? 2.7 : item.type === 'temple' ? 6.4 : 4.55;
+      const y = item.type === 'event' ? 6.1 : item.type === 'gateArch' ? 7.1 : item.type === 'riverBridge' ? 2.7 : item.type === 'temple' ? 6.4 : 4.55;
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
         map: this.createRouteIntroLabelTexture(item.label, item.type, visual.rim),
         transparent: true,
@@ -630,7 +651,7 @@ export class KathmanduChaos {
     canvas.height = 192;
     const ctx = canvas.getContext('2d');
     const accentColor = `#${new THREE.Color(accent).getHexString()}`;
-    const typeLabel = type === 'gateArch' ? 'Gate' : type === 'riverBridge' ? 'Bridge' : type === 'busPark' ? 'Bus park' : type === 'temple' ? 'Temple' : 'Chowk';
+    const typeLabel = type === 'event' ? 'Event' : type === 'gateArch' ? 'Gate' : type === 'riverBridge' ? 'Bridge' : type === 'busPark' ? 'Bus park' : type === 'temple' ? 'Temple' : 'Chowk';
 
     ctx.font = '900 62px Arial, sans-serif';
     ctx.textAlign = 'center';
@@ -694,7 +715,7 @@ export class KathmanduChaos {
     const best = this.progress.bestScores[this.selectedRoute] ?? 0;
     const stars = this.getRouteStars(this.selectedRoute);
     this.ui.garageRouteName.textContent = level.name;
-    this.ui.garageRouteStory.textContent = level.story;
+    this.ui.garageRouteStory.textContent = this.areFestivalsEnabled() && level.event ? `${level.story} Event: ${level.event.name}. ${level.event.hint}` : level.story;
     this.ui.garagePassengers.textContent = level.passengerGoal.toString();
     this.ui.garageTime.textContent = level.timeLimit.toString();
     this.ui.garageBest.textContent = best.toString();
@@ -704,9 +725,36 @@ export class KathmanduChaos {
     this.renderUpgradeUi();
     this.renderSkinUi();
     this.renderAudioButtons();
+    this.renderGameplayOptions();
     this.ui.garageHint.textContent = this.selectedRoute === this.progress.unlocked && this.progress.unlocked < LEVELS.length - 1
       ? `Clear this route to unlock ${LEVELS[this.progress.unlocked + 1].name}.`
       : 'Replay cleared routes to improve your best fare.';
+  }
+
+  renderGameplayOptions() {
+    if (this.ui.festivalToggle) {
+      const enabled = this.areFestivalsEnabled();
+      this.ui.festivalToggle.textContent = enabled ? 'Festivals on' : 'Festivals off';
+      this.ui.festivalToggle.classList.toggle('active', enabled);
+      this.ui.festivalToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    }
+    if (this.ui.redLightToggle) {
+      const enabled = this.areRedLightsEnabled();
+      this.ui.redLightToggle.textContent = enabled ? 'Red lights on' : 'Red lights off';
+      this.ui.redLightToggle.classList.toggle('active', enabled);
+      this.ui.redLightToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    }
+  }
+
+  toggleGameplayOption(key) {
+    if (!['festivalsEnabled', 'redLightsEnabled'].includes(key)) return;
+    this.progress[key] = this.progress[key] === false;
+    this.saveProgress();
+    this.loadLevel(this.selectedRoute, { showIntro: false });
+    this.showGarage();
+    this.ui.garageHint.textContent = key === 'festivalsEnabled'
+      ? `Festival routes ${this.areFestivalsEnabled() ? 'enabled' : 'disabled'} for future runs.`
+      : `Red lights ${this.areRedLightsEnabled() ? 'enabled' : 'disabled'} for future runs.`;
   }
 
   getRouteStars(index) {
@@ -819,7 +867,7 @@ export class KathmanduChaos {
   confirmResetProgress() {
     const confirmed = window.confirm('Reset unlocked routes, best fares, upgrades, and fare bank?');
     if (!confirmed) return;
-    this.progress = { unlocked: 0, bestScores: {}, routeStars: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume, skins: ['classic'], selectedSkin: 'classic', tutorialSeen: false };
+    this.progress = { unlocked: 0, bestScores: {}, routeStars: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume, festivalsEnabled: this.areFestivalsEnabled(), redLightsEnabled: this.areRedLightsEnabled(), skins: ['classic'], selectedSkin: 'classic', tutorialSeen: false };
     this.selectedRoute = 0;
     this.saveProgress();
     this.loadLevel(0, { showIntro: false });
@@ -1274,6 +1322,7 @@ export class KathmanduChaos {
       combo: 1,
       comboTimer: 0,
       comboBonus: 0,
+      eventBonus: 0,
       landmarkBonus: 0,
       maxCombo: 1,
       collisionPenalty: 0,
@@ -1288,6 +1337,7 @@ export class KathmanduChaos {
     this.hazards = [];
     this.redLights = [];
     this.bonusObjectives = [];
+    this.eventZones = [];
     this.effects = [];
     this.weather = null;
     this.spawnedSlots = [];
@@ -1305,6 +1355,7 @@ export class KathmanduChaos {
     this.buildWorld();
     this.buildPlayer();
     this.setupBonusObjectives();
+    this.setupEventObjectives();
     this.populateRoute();
     this.updateRouteUi();
     this.renderHud();
@@ -1368,7 +1419,7 @@ export class KathmanduChaos {
     this.addRoadPaint();
     this.addCityBlocks();
     this.addRouteDressing();
-    this.addRedLights();
+    if (this.areRedLightsEnabled()) this.addRedLights();
     this.addWeather();
   }
 
@@ -1527,6 +1578,7 @@ export class KathmanduChaos {
     }
 
     this.addRouteIdentityBoards();
+    this.addRouteEventDressing();
 
     this.addGameplayLandmarks();
 
@@ -1541,6 +1593,43 @@ export class KathmanduChaos {
     }
 
     this.addStreetProps();
+  }
+
+  addRouteEventDressing() {
+    const event = this.level.event;
+    if (!event || !this.areFestivalsEnabled()) return;
+    const accent = this.level.palette.accent;
+    const archPositions = event.arches ?? [0.16, 0.48, 0.78];
+
+    for (const [index, at] of archPositions.entries()) {
+      const z = -this.level.length * at;
+      const arch = createFestivalArch(index === 1 ? event.name : event.label, accent, this.level.theme);
+      arch.position.set(this.getRoadCenter(z), 0, z);
+      arch.rotation.y = this.getRoadAngle(z);
+      arch.scale.setScalar(index === 1 ? 1.06 : 0.92);
+      this.scene.add(arch);
+    }
+
+    for (let z = -95; z > -this.level.length + 35; z -= 112) {
+      for (const side of [-1, 1]) {
+        const row = createFestivalLampRow(this.level.theme === 'monsoon' ? 4.2 : 5.8, accent);
+        row.position.set(this.getRoadCenter(z) + side * 9.6, 0.02, z + side * 0.35);
+        row.rotation.y = this.getRoadAngle(z);
+        row.scale.setScalar(this.level.theme === 'monsoon' ? 0.72 : 1);
+        this.scene.add(row);
+      }
+    }
+
+    const crowdPositions = [0.26, 0.38, 0.56, 0.7, 0.88];
+    for (const [index, at] of crowdPositions.entries()) {
+      const z = -this.level.length * at;
+      const side = index % 2 === 0 ? 1 : -1;
+      const crowd = createFestivalCrowdCluster(accent);
+      crowd.position.set(this.getRoadCenter(z) + side * rand(11.2, 13.6), 0, z + rand(-8, 8));
+      crowd.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      crowd.scale.setScalar(this.level.theme === 'market' ? 1.15 : 0.95);
+      this.scene.add(crowd);
+    }
   }
 
   addRouteIdentityBoards() {
@@ -2293,6 +2382,27 @@ export class KathmanduChaos {
     });
   }
 
+  setupEventObjectives() {
+    const event = this.level.event;
+    if (!event || !this.areFestivalsEnabled()) {
+      this.eventZones = [];
+      return;
+    }
+
+    this.eventZones = (event.zones ?? [{ at: 0.5, reward: 120, label: event.name }]).map((zone, index) => ({
+      ...zone,
+      index,
+      eventId: event.id,
+      eventName: event.name,
+      rule: zone.rule ?? event.rule ?? 'clean',
+      maxSpeed: zone.maxSpeed ?? event.maxSpeed ?? 16,
+      minCombo: zone.minCombo ?? event.minCombo ?? 2,
+      z: -this.level.length * zone.at,
+      completed: false,
+      missed: false
+    }));
+  }
+
   update(delta) {
     if (!this.running || this.pausedByOverlay) return;
     if (this.routeIntro.active) {
@@ -2352,6 +2462,7 @@ export class KathmanduChaos {
 
     this.animateEntities(delta);
     this.checkBonusObjectives();
+    this.checkEventZones();
     this.checkRedLights();
     this.checkPickups();
     this.checkHazards(delta);
@@ -2592,6 +2703,49 @@ export class KathmanduChaos {
     this.showFeedback(`Landmark bonus +${objective.reward}: ${objective.label}`, 'good');
     this.playTone(880, 0.12, 'triangle', 0.16);
     this.playTone(1320, 0.14, 'triangle', 0.11, 0.08);
+  }
+
+  getActiveEventObjective() {
+    return this.eventZones?.find((zone) => !zone.completed && !zone.missed && this.player.position.z > zone.z);
+  }
+
+  checkEventZones() {
+    if (!this.eventZones?.length) return;
+    for (const zone of this.eventZones) {
+      if (zone.completed || zone.missed) continue;
+      if (this.player.position.z > zone.z) continue;
+
+      if (this.isEventZoneMet(zone)) {
+        zone.completed = true;
+        this.awardEventBonus(zone);
+      } else {
+        zone.missed = true;
+        this.showFeedback(`Festival tip missed: ${zone.label}`, 'bad');
+      }
+    }
+  }
+
+  isEventZoneMet(zone) {
+    if (zone.rule === 'slow') return this.state.speed <= zone.maxSpeed;
+    if (zone.rule === 'combo') return this.state.combo >= zone.minCombo;
+    return this.state.collisions === 0;
+  }
+
+  getEventObjectiveHint(zone) {
+    if (!zone) return '';
+    if (zone.rule === 'slow') return `${zone.label}: stay under ${Math.round(zone.maxSpeed * 3.2)} km/h +${zone.reward}`;
+    if (zone.rule === 'combo') return `${zone.label}: keep x${zone.minCombo} combo +${zone.reward}`;
+    return `${zone.label}: no collision +${zone.reward}`;
+  }
+
+  awardEventBonus(zone) {
+    this.state.eventBonus += zone.reward;
+    this.state.score += zone.reward;
+    const position = new THREE.Vector3(this.getRoadCenter(zone.z), 3.4, zone.z);
+    this.spawnScorePopup(position, `EVENT +${zone.reward}`, 'combo');
+    this.showFeedback(`${zone.eventName} tip +${zone.reward}`, 'good');
+    this.playTone(988, 0.11, 'triangle', 0.14);
+    this.playTone(1480, 0.14, 'triangle', 0.1, 0.08);
   }
 
   checkRedLights() {
@@ -3105,7 +3259,8 @@ export class KathmanduChaos {
     const timeBonus = completed ? Math.round(timeRemaining * 10) : 0;
     const cleanBonus = completed && this.state.collisions === 0 ? 220 : completed && this.state.collisions <= 1 ? 90 : 0;
     const landmarkBonus = completed ? this.state.landmarkBonus : 0;
-    const finalFare = Math.max(0, this.state.passengerFare + this.state.comboBonus + landmarkBonus + timeBonus + cleanBonus - this.state.collisionPenalty);
+    const eventBonus = completed ? this.state.eventBonus : 0;
+    const finalFare = Math.max(0, this.state.passengerFare + this.state.comboBonus + landmarkBonus + eventBonus + timeBonus + cleanBonus - this.state.collisionPenalty);
     const passengerRatio = this.state.passengers / this.level.passengerGoal;
     let stars = 0;
     if (completed) {
@@ -3122,11 +3277,19 @@ export class KathmanduChaos {
       passengerFare: this.state.passengerFare,
       comboBonus: this.state.comboBonus,
       landmarkBonus,
+      eventBonus,
+      eventName: this.level.event?.name ?? '',
       bonusObjectives: this.bonusObjectives.map((objective) => ({
         label: objective.label,
         reward: objective.reward,
         completed: objective.completed,
         missed: objective.missed
+      })),
+      eventObjectives: this.eventZones.map((zone) => ({
+        label: zone.label,
+        reward: zone.reward,
+        completed: zone.completed,
+        missed: zone.missed
       })),
       timeBonus,
       cleanBonus,
@@ -3180,6 +3343,7 @@ export class KathmanduChaos {
     this.ui.resultsCleanBonus.textContent = result.cleanBonus.toString();
     if (this.ui.resultsComboBonus) this.ui.resultsComboBonus.textContent = result.comboBonus.toString();
     if (this.ui.resultsLandmarkBonus) this.ui.resultsLandmarkBonus.textContent = result.landmarkBonus.toString();
+    if (this.ui.resultsEventBonus) this.ui.resultsEventBonus.textContent = result.eventBonus.toString();
     this.ui.resultsPenalty.textContent = result.collisionPenalty ? `-${result.collisionPenalty}` : '0';
     this.ui.resultsPassengers.textContent = `${result.passengers}/${result.passengerGoal}`;
     this.ui.resultsBest.textContent = result.newBest.toString();
@@ -3224,10 +3388,13 @@ export class KathmanduChaos {
     if (result.maxCombo >= 3) badges.push({ icon: 'x', tone: 'good', title: `x${result.maxCombo} Combo`, detail: `+${result.comboBonus} combo fare` });
     const completedBonuses = result.bonusObjectives?.filter((objective) => objective.completed) ?? [];
     if (completedBonuses.length > 0) badges.push({ icon: 'L', tone: 'good', title: 'Landmark Bonus', detail: `${completedBonuses.length}/${result.bonusObjectives.length} earned +${result.landmarkBonus}` });
+    const completedEvents = result.eventObjectives?.filter((objective) => objective.completed) ?? [];
+    if (completedEvents.length > 0) badges.push({ icon: 'E', tone: 'good', title: result.eventName, detail: `${completedEvents.length}/${result.eventObjectives.length} festival tips +${result.eventBonus}` });
     return badges;
   }
 
   getResultSummary(result) {
+    if (result.completed && result.eventBonus > 0) return `${result.eventName} paid off with +${result.eventBonus} festival tips. ${result.timeRemaining}s left.`;
     if (result.completed && result.maxCombo >= 4) return `Route cleared with a x${result.maxCombo} pickup streak. Maya kept the fare meter hot.`;
     if (result.stars === 3) return `Perfect tempo work. ${result.timeRemaining}s left, no collisions, and a clean fare bank run.`;
     if (result.stars === 2) return `Good route. ${result.timeRemaining}s left with ${result.collisions} collision${result.collisions === 1 ? '' : 's'}.`;
@@ -3283,6 +3450,7 @@ export class KathmanduChaos {
       this.ui.minimapTrack.appendChild(dot);
     };
     this.pickups.forEach((pickup) => addDot('passenger-dot', pickup.z));
+    this.eventZones?.forEach((zone) => addDot('event-dot', zone.z));
     this.entities
       .filter((entity) => entity.type === 'police')
       .forEach((entity) => addDot('police-dot', entity.z));
@@ -3305,6 +3473,10 @@ export class KathmanduChaos {
         if (dot) dot.classList.toggle('cleared', hazard.hit);
       });
     }
+    this.eventZones?.forEach((zone, index) => {
+      const dot = this.ui.minimapTrack?.querySelectorAll('.event-dot')[index];
+      if (dot) dot.classList.toggle('cleared', zone.completed || zone.missed);
+    });
   }
 
   renderTargetGuide() {
@@ -3319,10 +3491,13 @@ export class KathmanduChaos {
     this.ui.targetArrow.style.transform = `rotate(${angle}rad)`;
     if (this.ui.objective) {
       const bonus = this.getActiveBonusObjective();
+      const event = this.getActiveEventObjective();
       const request = target.pickup?.request;
       this.ui.objective.textContent = request
         ? `${request.label}: ${request.hint} +${request.bonus}`
-        : bonus
+        : event
+          ? `Event: ${this.getEventObjectiveHint(event)}`
+          : bonus
           ? `Bonus: ${bonus.label} +${bonus.reward}`
           : 'Drive through yellow rings to board passengers.';
     }
@@ -3331,7 +3506,7 @@ export class KathmanduChaos {
   updateRouteUi() {
     this.ui.levelName.textContent = this.level.district;
     this.ui.routeTitle.textContent = this.level.name;
-    this.ui.routeStory.textContent = this.level.story;
+    this.ui.routeStory.textContent = this.areFestivalsEnabled() && this.level.event ? `${this.level.story} Event: ${this.level.event.name}. ${this.level.event.hint}` : this.level.story;
     this.ui.levelIndex.textContent = `${this.levelIndex + 1}/${LEVELS.length}`;
   }
 
