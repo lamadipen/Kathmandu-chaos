@@ -69,6 +69,8 @@ const game = new KathmanduChaos({
     hearts: document.querySelector('#hearts'),
     combo: document.querySelector('#combo'),
     comboMeter: document.querySelector('#comboMeter'),
+    speedValue: document.querySelector('#speedValue'),
+    speedNeedle: document.querySelector('#speedNeedle'),
     progressBar: document.querySelector('#progressBar'),
     objective: document.querySelector('#objective'),
     targetGuide: document.querySelector('#targetGuide'),

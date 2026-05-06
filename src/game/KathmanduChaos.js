@@ -169,6 +169,7 @@ export class KathmanduChaos {
     this.entities = [];
     this.pickups = [];
     this.hazards = [];
+    this.redLights = [];
     this.trafficLaneSlots = new Map();
     this.effects = [];
     this.weather = null;
@@ -507,7 +508,7 @@ export class KathmanduChaos {
 
     if (this.state.passengers < this.level.passengerGoal && this.tutorialCoach.age < 13) {
       this.tutorialCoach.stage = 'traffic';
-      this.setTutorialCoach('Street control', 'Horn and brake help', 'Tap H or Horn near traffic. Use Space or Brake before tight gaps.');
+      this.setTutorialCoach('Street control', 'Horn, brake, red lights', 'Tap H or Horn near traffic. Slow at red lights and brake before tight gaps.');
       return;
     }
 
@@ -551,7 +552,7 @@ export class KathmanduChaos {
     this.routeIntroLabels = landmarks.map((item, index) => {
       const z = -this.level.length * item.at;
       const side = item.type === 'gateArch' || item.type === 'riverBridge' ? 0 : item.side ?? 1;
-      const x = side === 0 ? 0 : side * 14.2;
+      const x = this.getRoadCenter(z) + (side === 0 ? 0 : side * 14.2);
       const y = item.type === 'gateArch' ? 7.1 : item.type === 'riverBridge' ? 2.7 : item.type === 'temple' ? 6.4 : 4.55;
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
         map: this.createRouteIntroLabelTexture(item.label, item.type, visual.rim),
@@ -1235,6 +1236,7 @@ export class KathmanduChaos {
     this.entities = [];
     this.pickups = [];
     this.hazards = [];
+    this.redLights = [];
     this.bonusObjectives = [];
     this.effects = [];
     this.weather = null;
@@ -1286,16 +1288,21 @@ export class KathmanduChaos {
     this.road = new THREE.Group();
     this.scene.add(this.road);
 
-    const roadGeo = new THREE.BoxGeometry(17, 0.35, this.level.length + 80);
     const roadMat = new THREE.MeshStandardMaterial({
       color: palette.road,
       roughness: this.level.wetRoad ? 0.38 : 0.72,
       metalness: this.level.wetRoad ? 0.18 : 0.02
     });
-    const road = new THREE.Mesh(roadGeo, roadMat);
-    road.position.set(0, -0.2, -this.level.length / 2 + 30);
-    road.receiveShadow = true;
-    this.scene.add(road);
+    const segmentLength = 28;
+    for (let z = 24; z > -this.level.length - 50; z -= segmentLength) {
+      const center = this.getRoadCenter(z);
+      const nextCenter = this.getRoadCenter(z - segmentLength);
+      const road = new THREE.Mesh(new THREE.BoxGeometry(17, 0.35, segmentLength + 2), roadMat);
+      road.position.set(center, -0.2, z - segmentLength / 2);
+      road.rotation.y = Math.atan2(nextCenter - center, segmentLength);
+      road.receiveShadow = true;
+      this.scene.add(road);
+    }
 
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(90, this.level.length + 180),
@@ -1311,6 +1318,7 @@ export class KathmanduChaos {
     this.addRoadPaint();
     this.addCityBlocks();
     this.addRouteDressing();
+    this.addRedLights();
     this.addWeather();
   }
 
@@ -1318,22 +1326,49 @@ export class KathmanduChaos {
     return routeVisualProfiles[this.level.theme] ?? routeVisualProfiles.market;
   }
 
+  getRoadCenter(z) {
+    const curve = this.level.roadCurve ?? { amplitude: 0, frequency: 1, phase: 0 };
+    if (!curve.amplitude) return 0;
+    const progress = clamp((12 - z) / (this.level.length + 12), 0, 1);
+    const wave = Math.sin(progress * Math.PI * 2 * curve.frequency + curve.phase);
+    const secondary = Math.sin(progress * Math.PI * 4.2 + curve.phase * 0.7) * 0.24;
+    return (wave + secondary) * curve.amplitude;
+  }
+
+  getRoadAngle(z) {
+    const ahead = this.getRoadCenter(z - 8);
+    const behind = this.getRoadCenter(z + 8);
+    return Math.atan2(ahead - behind, 16);
+  }
+
+  getRoadX(laneOffset, z) {
+    return this.getRoadCenter(z) + laneOffset;
+  }
+
   addRoadPaint() {
     const visual = this.getRouteVisualProfile();
     const lineMat = new THREE.MeshBasicMaterial({ color: this.level.wetRoad ? 0xdbeafe : 0xf4f0d8, transparent: true, opacity: this.level.wetRoad ? 0.58 : 0.78 });
     const edgeMat = new THREE.MeshBasicMaterial({ color: visual.rim, transparent: true, opacity: this.level.wetRoad ? 0.32 : 0.18 });
     for (let z = 10; z > -this.level.length; z -= 22) {
+      const center = this.getRoadCenter(z);
+      const angle = this.getRoadAngle(z);
       for (const x of [-4.05, -1.35, 1.35, 4.05]) {
         const dash = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 7.5), lineMat);
-        dash.position.set(x, 0.03, z);
+        dash.position.set(center + x, 0.03, z);
+        dash.rotation.y = angle;
         this.scene.add(dash);
       }
     }
 
-    for (const x of [-8.45, 8.45]) {
-      const edge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, this.level.length + 58), edgeMat);
-      edge.position.set(x, 0.035, -this.level.length / 2 + 18);
-      this.scene.add(edge);
+    for (let z = 10; z > -this.level.length; z -= 18) {
+      const center = this.getRoadCenter(z);
+      const angle = this.getRoadAngle(z);
+      for (const x of [-8.45, 8.45]) {
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, 12), edgeMat);
+        edge.position.set(center + x, 0.035, z);
+        edge.rotation.y = angle;
+        this.scene.add(edge);
+      }
     }
   }
 
@@ -1349,7 +1384,8 @@ export class KathmanduChaos {
           new THREE.BoxGeometry(width, height, depth),
           new THREE.MeshStandardMaterial({ color: choice(colors), roughness: 0.76 })
         );
-        building.position.set(side * rand(15, 27), height / 2 - 0.15, z + rand(-5, 5));
+        const buildingZ = z + rand(-5, 5);
+        building.position.set(this.getRoadCenter(buildingZ) + side * rand(15, 27), height / 2 - 0.15, buildingZ);
         building.castShadow = true;
         building.receiveShadow = true;
         this.scene.add(building);
@@ -1378,14 +1414,15 @@ export class KathmanduChaos {
     for (let z = -80; z > -this.level.length; z -= 140) {
       const side = Math.random() > 0.5 ? 1 : -1;
       const stall = createStreetStall(choice(stallLabels));
-      stall.position.set(side * rand(11.5, 14.5), 0, z + rand(-20, 20));
+      const stallZ = z + rand(-20, 20);
+      stall.position.set(this.getRoadCenter(stallZ) + side * rand(11.5, 14.5), 0, stallZ);
       stall.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       this.scene.add(stall);
     }
 
     for (let z = -110; z > -this.level.length; z -= 180) {
       const flags = createPrayerFlags(rand(5, 8));
-      flags.position.set(0, rand(5.4, 7.2), z);
+      flags.position.set(this.getRoadCenter(z), rand(5.4, 7.2), z);
       flags.rotation.y = rand(-0.25, 0.25);
       this.scene.add(flags);
     }
@@ -1396,7 +1433,7 @@ export class KathmanduChaos {
     for (const [index, z] of landmarkPositions.entries()) {
       const side = index % 2 === 0 ? 1 : -1;
       const landmark = createLandmark(this.level.theme, this.level.palette.accent);
-      landmark.position.set(side * 23, 0, z);
+      landmark.position.set(this.getRoadCenter(z) + side * 23, 0, z);
       landmark.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       landmark.scale.setScalar(index === 0 ? 1 : 0.82);
       this.scene.add(landmark);
@@ -1416,10 +1453,10 @@ export class KathmanduChaos {
       });
 
       if (item.type === 'gateArch' || item.type === 'riverBridge') {
-        landmark.position.set(0, 0, z);
+        landmark.position.set(this.getRoadCenter(z), 0, z);
       } else {
         const side = item.side ?? 1;
-        landmark.position.set(side * 22, 0, z);
+        landmark.position.set(this.getRoadCenter(z) + side * 22, 0, z);
         landmark.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
         landmark.scale.setScalar(item.type === 'temple' ? 1.15 : 1);
       }
@@ -1490,8 +1527,9 @@ export class KathmanduChaos {
         if (Math.random() < 0.18) continue;
         const type = choice(propTypes);
         const prop = createStreetProp(type, { accent: this.level.palette.accent, label: choice(labels) });
-        const x = side * (type === 'puddle' ? rand(8.9, 10.3) : rand(10.8, 14.6));
-        prop.position.set(x, 0, z + rand(-12, 12));
+        const propZ = z + rand(-12, 12);
+        const x = this.getRoadCenter(propZ) + side * (type === 'puddle' ? rand(8.9, 10.3) : rand(10.8, 14.6));
+        prop.position.set(x, 0, propZ);
         prop.rotation.y = side > 0 ? -Math.PI / 2 + rand(-0.08, 0.08) : Math.PI / 2 + rand(-0.08, 0.08);
         if (type === 'puddle') prop.scale.setScalar(rand(0.75, 1.15));
         if (type === 'bricks' || type === 'barrier') prop.scale.setScalar(rand(0.85, 1.25));
@@ -1501,8 +1539,47 @@ export class KathmanduChaos {
 
     for (let z = -135; z > -this.level.length; z -= 215) {
       const wires = createStreetProp('wires', { accent: this.level.palette.accent });
-      wires.position.set(0, 0, z + rand(-18, 18));
+      const wireZ = z + rand(-18, 18);
+      wires.position.set(this.getRoadCenter(wireZ), 0, wireZ);
       this.scene.add(wires);
+    }
+  }
+
+  addRedLights() {
+    const stops = this.level.redLights ?? [];
+    for (const [index, at] of stops.entries()) {
+      const z = -this.level.length * at;
+      const center = this.getRoadCenter(z);
+      const group = new THREE.Group();
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0x2b3034, roughness: 0.6 });
+      const redMat = new THREE.MeshBasicMaterial({ color: 0xff2f3f });
+      const amberMat = new THREE.MeshBasicMaterial({ color: 0xffcf42 });
+      const housingMat = new THREE.MeshStandardMaterial({ color: 0x101418, roughness: 0.5 });
+      for (const side of [-1, 1]) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4.6, 10), poleMat);
+        pole.position.set(center + side * 7.9, 2.25, z);
+        group.add(pole);
+        const box = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.15, 0.28), housingMat);
+        box.position.set(center + side * 7.9, 4.25, z - 0.45);
+        group.add(box);
+        const red = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 10), redMat);
+        red.position.set(center + side * 7.9, 4.5, z - 0.61);
+        group.add(red);
+        const amber = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 10), amberMat);
+        amber.position.set(center + side * 7.9, 4.12, z - 0.61);
+        amber.material.opacity = 0.35;
+        amber.material.transparent = true;
+        group.add(amber);
+      }
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(15.2, 0.035, 0.55),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.62 })
+      );
+      stripe.position.set(center, 0.055, z + 2.2);
+      stripe.rotation.y = this.getRoadAngle(z);
+      group.add(stripe);
+      this.scene.add(group);
+      this.redLights.push({ z, center, active: true, hit: false, index });
     }
   }
 
@@ -1569,10 +1646,10 @@ export class KathmanduChaos {
 
   buildPlayer() {
     this.player = createTempo(this.level.routeBoard, this.getSelectedSkin());
-    this.player.position.set(0, 0.9, 12);
+    this.player.position.set(this.getRoadCenter(12), 0.9, 12);
     this.scene.add(this.player);
 
-    const rb = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0.9, 12);
+    const rb = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(this.getRoadCenter(12), 0.9, 12);
     this.playerBody = this.world.createRigidBody(rb);
     const collider = RAPIER.ColliderDesc.cuboid(1.25, 0.95, 1.95);
     this.world.createCollider(collider, this.playerBody);
@@ -1590,14 +1667,16 @@ export class KathmanduChaos {
   }
 
   addPassengers() {
-    const spacing = this.level.length / (this.level.passengerGoal + 1);
-    for (let i = 0; i < this.level.passengerGoal + 2; i += 1) {
+    const totalPassengers = this.level.passengerGoal + (this.level.extraPassengers ?? 3);
+    const spacing = this.level.length / (totalPassengers + 1);
+    for (let i = 0; i < totalPassengers; i += 1) {
       const lane = choice([LANES[0], LANES[4]]);
       const z = -spacing * (i + 0.75) + rand(-12, 12);
+      const x = this.getRoadX(lane, z);
       const personality = this.getPassengerPersonality(i);
-      const passenger = this.createPassenger(lane, z, i, personality);
-      this.pickups.push({ mesh: passenger, collected: false, z, x: lane, index: i, personality, value: 120 + i * 15 + personality.fareBonus });
-      this.spawnedSlots.push({ x: lane, z, radius: 10 });
+      const passenger = this.createPassenger(x, z, i, personality);
+      this.pickups.push({ mesh: passenger, collected: false, z, x, lane, index: i, personality, value: 120 + i * 12 + personality.fareBonus });
+      this.spawnedSlots.push({ x, z, radius: 10 });
     }
   }
 
@@ -1726,6 +1805,7 @@ export class KathmanduChaos {
       const variant = type === 'car' ? i : 0;
       const mesh = this.createObstacleMesh(type, variant);
       mesh.position.set(x, 0.6, z);
+      mesh.rotation.y = this.getRoadAngle(z);
       this.scene.add(mesh);
 
       const rb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, 0.6, z));
@@ -1740,6 +1820,7 @@ export class KathmanduChaos {
         x,
         z,
         baseX: x,
+        baseLane: this.getNearestLaneOffset(x, z),
         baseZ: z,
         laneTarget: x,
         aiOffset: 0,
@@ -1772,9 +1853,10 @@ export class KathmanduChaos {
       const x = lanePool[laneIndex];
       const jitter = rand(-segment * 0.34, segment * 0.34);
       const z = clamp(baseZ + jitter + Math.sin(index * 1.7 + attempt) * 4, end, start);
-      if (this.isTrafficSlotClear(x, z, type, minGap)) {
-        this.reserveTrafficLaneSlot(x, z, minGap);
-        return { x, z };
+      const absoluteX = this.getRoadX(x, z);
+      if (this.isTrafficSlotClear(absoluteX, z, type, minGap)) {
+        this.reserveTrafficLaneSlot(absoluteX, z, minGap);
+        return { x: absoluteX, z };
       }
     }
 
@@ -1793,6 +1875,13 @@ export class KathmanduChaos {
     if (type === 'cow') return LANES;
     if (type === 'cyclist') return [LANES[0], LANES[1], LANES[3], LANES[4]];
     return LANES.slice(1, -1);
+  }
+
+  getNearestLaneOffset(x, z) {
+    const center = this.getRoadCenter(z);
+    return LANES.reduce((nearest, lane) => {
+      return Math.abs(center + lane - x) < Math.abs(center + nearest - x) ? lane : nearest;
+    }, LANES[2]);
   }
 
   isTrafficSlotClear(x, z, type, minGap) {
@@ -1838,11 +1927,13 @@ export class KathmanduChaos {
       const z = rand(start, end);
       const lanePool = type === 'cow' ? LANES : LANES.slice(1, -1);
       const x = choice(lanePool);
-      const blocked = this.spawnedSlots.some((slot) => Math.abs(slot.z - z) < slot.radius + minGap && Math.abs(slot.x - x) < 1.8);
-      const nearPassenger = this.pickups.some((pickup) => Math.abs(pickup.z - z) < 16 && Math.abs(pickup.x - x) < 3.1);
-      if (!blocked && !nearPassenger) return { x, z };
+      const absoluteX = this.getRoadX(x, z);
+      const blocked = this.spawnedSlots.some((slot) => Math.abs(slot.z - z) < slot.radius + minGap && Math.abs(slot.x - absoluteX) < 1.8);
+      const nearPassenger = this.pickups.some((pickup) => Math.abs(pickup.z - z) < 16 && Math.abs(pickup.x - absoluteX) < 3.1);
+      if (!blocked && !nearPassenger) return { x: absoluteX, z };
     }
-    return { x: choice(LANES.slice(1, -1)), z: rand(start, end) };
+    const z = rand(start, end);
+    return { x: this.getRoadX(choice(LANES.slice(1, -1)), z), z };
   }
 
   createObstacleMesh(type, variant = 0) {
@@ -1865,7 +1956,7 @@ export class KathmanduChaos {
       const { x, z } = this.findHazardSlot(start, end, type);
       const mesh = createRoadHazard(type, this.level.palette.accent);
       mesh.position.set(x, type === 'barrier' ? 0.02 : 0.04, z);
-      mesh.rotation.y = rand(-0.25, 0.25);
+      mesh.rotation.y = this.getRoadAngle(z) + rand(-0.25, 0.25);
       if (type === 'pothole') mesh.scale.setScalar(rand(0.82, 1.28));
       if (type === 'puddle') mesh.scale.set(rand(0.85, 1.35), 1, rand(0.72, 1.1));
       this.scene.add(mesh);
@@ -1879,12 +1970,13 @@ export class KathmanduChaos {
     for (let attempt = 0; attempt < 80; attempt += 1) {
       const z = rand(start, end);
       const lanePool = type === 'puddle' ? LANES : LANES.slice(1, -1);
-      const x = choice(lanePool);
+      const x = this.getRoadX(choice(lanePool), z);
       const blocked = this.spawnedSlots.some((slot) => Math.abs(slot.z - z) < slot.radius + minGap && Math.abs(slot.x - x) < 2.4);
       const nearPassenger = this.pickups.some((pickup) => Math.abs(pickup.z - z) < 18 && Math.abs(pickup.x - x) < 3.3);
       if (!blocked && !nearPassenger) return { x, z };
     }
-    return { x: choice(LANES.slice(1, -1)), z: rand(start, end) };
+    const z = rand(start, end);
+    return { x: this.getRoadX(choice(LANES.slice(1, -1)), z), z };
   }
 
   async attachPoliceModel(group) {
@@ -1907,15 +1999,16 @@ export class KathmanduChaos {
 
   addFinishGate() {
     const z = -this.level.length;
+    const center = this.getRoadCenter(z);
     const mat = new THREE.MeshStandardMaterial({ color: this.level.palette.accent, roughness: 0.45 });
     for (const x of [-7, 7]) {
       const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 5.5, 0.5), mat);
-      pillar.position.set(x, 2.6, z);
+      pillar.position.set(center + x, 2.6, z);
       pillar.castShadow = true;
       this.scene.add(pillar);
     }
     const banner = new THREE.Mesh(new THREE.BoxGeometry(14.5, 0.75, 0.35), mat);
-    banner.position.set(0, 5.25, z);
+    banner.position.set(center, 5.25, z);
     banner.castShadow = true;
     this.scene.add(banner);
   }
@@ -1976,17 +2069,23 @@ export class KathmanduChaos {
     const left = this.keys.has('a') || this.keys.has('arrowleft') || this.touchInput.left;
     const right = this.keys.has('d') || this.keys.has('arrowright') || this.touchInput.right;
     const slide = this.level.wetRoad ? 0.82 : 1;
-    this.state.steer += ((right ? 1 : 0) - (left ? 1 : 0)) * (9.6 + handlingBoost) * delta * slide;
-    this.state.steer *= this.level.wetRoad ? 0.94 : 0.84;
+    this.state.steer += ((right ? 1 : 0) - (left ? 1 : 0)) * (15.2 + handlingBoost * 1.4) * delta * slide;
+    this.state.steer *= this.level.wetRoad ? 0.9 : 0.76;
 
-    this.player.position.x = clamp(this.player.position.x + this.state.steer * delta * 6.2, -6.7, 6.7);
-    this.player.position.z -= this.state.speed * delta;
-    this.player.rotation.z = -this.state.steer * 0.08;
-    this.player.rotation.y = -this.state.steer * 0.025;
+    const previousZ = this.player.position.z;
+    const previousCenter = this.getRoadCenter(previousZ);
+    const nextZ = this.player.position.z - this.state.speed * delta;
+    const nextCenter = this.getRoadCenter(nextZ);
+    const curveCarry = (nextCenter - previousCenter) * 0.68;
+    this.player.position.z = nextZ;
+    this.player.position.x = clamp(this.player.position.x + curveCarry + this.state.steer * delta * 7.8, nextCenter - 6.9, nextCenter + 6.9);
+    this.player.rotation.z = -this.state.steer * 0.085;
+    this.player.rotation.y = this.getRoadAngle(this.player.position.z) - this.state.steer * 0.032;
     this.playerBody.setNextKinematicTranslation(this.player.position);
 
     this.animateEntities(delta);
     this.checkBonusObjectives();
+    this.checkRedLights();
     this.checkPickups();
     this.checkHazards(delta);
     this.checkCollisions();
@@ -2133,12 +2232,13 @@ export class KathmanduChaos {
     const driftWave = Math.sin(this.state.elapsed * 0.75 + entity.wobble) * entity.drift;
     const alertNudge = alert ? (entity.alertSide || Math.sign(playerDx) || 1) * 1.15 * alert : 0;
     const avoidNudge = nearPlayerAhead ? Math.sign(playerDx || 1) * 0.7 : 0;
-    const targetX = clamp(entity.baseX + driftWave + alertNudge + avoidNudge, -6.4, 6.4);
     const targetZ = entity.baseZ - entity.aiOffset;
+    const roadCenter = this.getRoadCenter(targetZ);
     const previousX = entity.mesh.position.x;
     const previousZ = entity.mesh.position.z;
+    const laneBaseX = roadCenter + (entity.baseLane ?? 0);
 
-    entity.mesh.position.x += (targetX - entity.mesh.position.x) * (1 - Math.pow(0.001, delta));
+    entity.mesh.position.x += (laneBaseX + driftWave + alertNudge + avoidNudge - entity.mesh.position.x) * (1 - Math.pow(0.001, delta));
     entity.mesh.position.z += (targetZ - entity.mesh.position.z) * (1 - Math.pow(0.01, delta));
     const lateralVelocity = (entity.mesh.position.x - previousX) / Math.max(delta, 0.001);
     const forwardVelocity = (previousZ - entity.mesh.position.z) / Math.max(delta, 0.001);
@@ -2147,13 +2247,13 @@ export class KathmanduChaos {
     entity.body.setTranslation(entity.mesh.position, true);
 
     if (entity.type === 'car') {
-      entity.mesh.rotation.y = clamp(lateralVelocity * -0.035, -0.22, 0.22) + Math.sin(this.state.elapsed * 1.4 + entity.wobble) * 0.015;
+      entity.mesh.rotation.y = this.getRoadAngle(entity.mesh.position.z) + clamp(lateralVelocity * -0.035, -0.22, 0.22) + Math.sin(this.state.elapsed * 1.4 + entity.wobble) * 0.015;
       entity.mesh.rotation.z = (blockedAhead ? 0.04 : 0) + alert * 0.05 * (entity.alertSide || 1);
     } else if (entity.type === 'cyclist') {
-      entity.mesh.rotation.y = Math.sin(this.state.elapsed * 1.2 + entity.wobble) * 0.08 + clamp(lateralVelocity * -0.045, -0.25, 0.25) + alert * 0.18 * (entity.alertSide || 1);
+      entity.mesh.rotation.y = this.getRoadAngle(entity.mesh.position.z) + Math.sin(this.state.elapsed * 1.2 + entity.wobble) * 0.08 + clamp(lateralVelocity * -0.045, -0.25, 0.25) + alert * 0.18 * (entity.alertSide || 1);
       entity.mesh.rotation.x = clamp(forwardVelocity * -0.004, -0.05, 0.02);
     } else if (entity.type === 'cow') {
-      entity.mesh.rotation.y = Math.sin(this.state.elapsed * 1.1 + entity.wobble) * 0.18 + alert * 0.25 * (entity.alertSide || 1);
+      entity.mesh.rotation.y = this.getRoadAngle(entity.mesh.position.z) + Math.sin(this.state.elapsed * 1.1 + entity.wobble) * 0.18 + alert * 0.25 * (entity.alertSide || 1);
     } else if (entity.type === 'police' && alert) {
       entity.mesh.rotation.y = alert * 0.2 * (entity.alertSide || 1);
     }
@@ -2176,7 +2276,8 @@ export class KathmanduChaos {
     if (this.state.passengers < this.level.passengerGoal && nextPickup) {
       return { label: 'Next passenger', position: nextPickup.mesh.position };
     }
-    return { label: 'Finish gate', position: new THREE.Vector3(0, 0, -this.level.length) };
+    const finishZ = -this.level.length;
+    return { label: 'Finish gate', position: new THREE.Vector3(this.getRoadCenter(finishZ), 0, finishZ) };
   }
 
   getActiveBonusObjective() {
@@ -2210,11 +2311,43 @@ export class KathmanduChaos {
   awardLandmarkBonus(objective) {
     this.state.landmarkBonus += objective.reward;
     this.state.score += objective.reward;
-    const position = new THREE.Vector3(0, 2.8, objective.z);
+    const position = new THREE.Vector3(this.getRoadCenter(objective.z), 2.8, objective.z);
     this.spawnScorePopup(position, `BONUS +${objective.reward}`, 'combo');
     this.showFeedback(`Landmark bonus +${objective.reward}: ${objective.label}`, 'good');
     this.playTone(880, 0.12, 'triangle', 0.16);
     this.playTone(1320, 0.14, 'triangle', 0.11, 0.08);
+  }
+
+  checkRedLights() {
+    if (!this.redLights.length) return;
+    for (const light of this.redLights) {
+      if (light.hit) continue;
+      const dz = Math.abs(this.player.position.z - light.z);
+      const dx = Math.abs(this.player.position.x - this.getRoadCenter(light.z));
+      if (dz > 3.2 || dx > 8.2) continue;
+
+      light.hit = true;
+      const position = new THREE.Vector3(light.center, 2.6, light.z);
+      if (this.state.speed < 10) {
+        this.state.score += 40;
+        this.showFeedback('Clean stop at red light +40', 'good');
+        this.spawnScorePopup(position, '+40', 'good');
+        this.playTone(660, 0.08, 'triangle', 0.09);
+      } else {
+        this.state.hearts -= 1;
+        this.state.collisions += 1;
+        this.state.collisionPenalty += 70;
+        this.state.score = Math.max(0, this.state.score - 70);
+        this.state.speed = Math.max(5, this.state.speed * 0.56);
+        this.state.invulnerable = Math.max(this.state.invulnerable, 0.35);
+        this.shake = Math.max(this.shake, 0.22);
+        this.resetCombo();
+        this.flashHit();
+        this.playHitSound('police');
+        this.showFeedback('Red light! -1 chance', 'bad');
+        this.spawnScorePopup(position, '-70', 'bad');
+      }
+    }
   }
 
   showFeedback(message, tone = 'good') {
@@ -2709,6 +2842,11 @@ export class KathmanduChaos {
     this.ui.hearts.textContent = Math.max(0, this.state.hearts).toString();
     if (this.ui.combo) this.ui.combo.textContent = `x${this.state.combo}`;
     if (this.ui.comboMeter) this.ui.comboMeter.classList.toggle('active', this.state.combo > 1);
+    if (this.ui.speedValue) this.ui.speedValue.textContent = Math.round(this.state.speed * 3.2).toString();
+    if (this.ui.speedNeedle) {
+      const speedPercent = clamp(this.state.speed / 42, 0, 1);
+      this.ui.speedNeedle.style.setProperty('--speed', `${Math.round(speedPercent * 100)}%`);
+    }
     this.ui.progressBar.style.width = `${progress * 100}%`;
     if (this.ui.speedLines) {
       this.ui.speedLines.style.opacity = `${clamp((this.state.speed - 16) / 18, 0, 0.42)}`;

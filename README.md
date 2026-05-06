@@ -62,7 +62,9 @@ On mobile, use the on-screen controls:
 - Route-specific hazards including potholes, puddles, and blocked-lane barriers
 - Route intro camera pan with countdown before player control begins
 - Time limit, health/chances, route progress, and retry flow
+- Longer routes with extra optional passengers so missed pickups can be recovered later in the run
 - Responsive HUD and overlay UI
+- HUD speed meter with live km/h readout
 - Garage route-selection screen with locked routes, tempo stats, and saved best fares
 - Campaign progress saved with `localStorage`
 - Pause/settings menu with resume, restart, garage, audio toggle, and reset progress
@@ -87,6 +89,8 @@ On mobile, use the on-screen controls:
 - Advanced-route minimap hazard markers for potholes, puddles, and barriers
 - Route-specific weather effects with monsoon rain and mist on wet routes
 - Gameplay-readable route landmarks including temples, chowks, bus parks, river bridges, and gate arches
+- Curved S-turn route roads with traffic, passengers, hazards, landmarks, and finish gates following the road line
+- Red-light checkpoints that reward slowing down and penalize blasting through
 - Traffic variety with cars, buses, taxis, and scooters
 - Light AI traffic behavior with consistent forward movement, lane drift, braking around nearby vehicles, and horn reactions
 - Paced moving-traffic spawning with lane-aware gaps to reduce unfair clusters

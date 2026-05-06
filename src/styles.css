@@ -65,9 +65,9 @@ body {
 
 .meters {
   display: grid;
-  grid-template-columns: repeat(5, minmax(62px, 1fr));
+  grid-template-columns: repeat(6, minmax(62px, 1fr));
   gap: 8px;
-  width: min(560px, 58vw);
+  width: min(660px, 62vw);
 }
 
 .meters div,
@@ -97,6 +97,32 @@ body {
 
 .meters div.combo-meter.active span {
   color: #3a2b00;
+}
+
+.meters div.speed-meter {
+  position: relative;
+  overflow: hidden;
+  border-color: rgb(123 237 159 / 34%);
+}
+
+.speed-meter i {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 7px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 14%);
+}
+
+.speed-meter i::before {
+  display: block;
+  width: var(--speed, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7bed9f, #ffcf42, #ff6b6b);
+  content: "";
 }
 
 .meters strong {
@@ -1227,7 +1253,7 @@ button:focus-visible {
 
   .meters {
     width: 100%;
-    grid-template-columns: repeat(5, minmax(48px, 1fr));
+    grid-template-columns: repeat(6, minmax(44px, 1fr));
     gap: 5px;
   }
 
