@@ -194,16 +194,33 @@ Create a production build:
 npm run build
 ```
 
+Run the release check before sharing a build:
+
+```bash
+npm run release:check
+```
+
 Preview the production build:
 
 ```bash
 npm run preview
 ```
 
-## Future Ideas
+## Release Prep
 
-- Vehicle unlocks: tempo, microbus, scooter, delivery EV
-- Festival crowd routes and lane closures
-- Combo scoring for clean driving and fast pickups
-- Garage upgrades for handling, battery, braking, and passenger capacity
-- Audio: horns, street ambience, pickup sounds, police whistle
+Before publishing or sharing a playable build, use the release checklist:
+
+- [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)
+
+It covers build verification, desktop and mobile smoke tests, asset/license audit, current known limitations, and a short release-notes draft.
+
+## Suggested Next Work
+
+- Add a third title-screen action so `Start Route 1`, `Enter garage`, and `Credits` are all available without hiding quick start.
+- Add a lightweight first-run tutorial route prompt for pickup rings, horn use, brakes, and finish gates.
+- Add final low-poly Kathmandu character art: passenger families, vendors, students, monks, and traffic police with route-specific outfits.
+- Add a release landing page or itch.io page assets: capsule image, screenshots, short trailer capture list, and controls summary.
+- Add a save reset confirmation dialog so players cannot wipe progress with one accidental click.
+- Add route balancing telemetry hooks for local testing: average completion time, collision count, missed pickups, and fail reason.
+- Add final audio pass with sourced/recorded ambient loops and documented licenses.
+- Add more vehicle unlocks after the first playable: microbus, scooter, delivery EV, and upgraded tempo variants.
