@@ -190,6 +190,7 @@ export class KathmanduChaos {
     this.hornPulse = 0;
     this.paused = false;
     this.routeIntro = { active: false, age: 0, duration: 3.2 };
+    this.tutorialCoach = { active: false, age: 0, stage: 'intro', completeTimer: 0 };
     this.touchInput = {
       left: false,
       right: false,
@@ -308,7 +309,8 @@ export class KathmanduChaos {
       audioMuted: false,
       audioVolume: 0.8,
       skins: ['classic'],
-      selectedSkin: 'classic'
+      selectedSkin: 'classic',
+      tutorialSeen: false
     };
     try {
       const saved = JSON.parse(window.localStorage.getItem(progressKey));
@@ -325,7 +327,8 @@ export class KathmanduChaos {
         audioMuted: Boolean(saved?.audioMuted),
         audioVolume: clamp(Number(saved?.audioVolume ?? 0.8), 0, 1),
         skins: Array.from(new Set(['classic', ...(Array.isArray(saved?.skins) ? saved.skins : [])])).filter((id) => tempoSkins.some((skin) => skin.id === id)),
-        selectedSkin: tempoSkins.some((skin) => skin.id === saved?.selectedSkin) ? saved.selectedSkin : 'classic'
+        selectedSkin: tempoSkins.some((skin) => skin.id === saved?.selectedSkin) ? saved.selectedSkin : 'classic',
+        tutorialSeen: Boolean(saved?.tutorialSeen)
       };
     } catch {
       return defaults;
@@ -339,6 +342,7 @@ export class KathmanduChaos {
   setupGarage() {
     this.ui.garageStart?.addEventListener('click', () => this.startSelectedRoute());
     this.ui.audioToggle?.addEventListener('click', () => this.toggleAudio());
+    this.ui.tutorialButton?.addEventListener('click', () => this.startRoute(this.selectedRoute, { tutorial: true }));
     this.ui.creditsButton?.addEventListener('click', () => this.showCredits('garage'));
     this.ui.pauseAudioToggle?.addEventListener('click', () => this.toggleAudio());
     this.ui.volumeSlider?.addEventListener('input', (event) => this.setAudioVolume(Number(event.target.value) / 100));
@@ -372,6 +376,8 @@ export class KathmanduChaos {
     this.running = false;
     this.pausedByOverlay = true;
     this.paused = false;
+    this.tutorialCoach.active = false;
+    this.hideTutorialCoach();
     if (this.ui.overlayKicker) this.ui.overlayKicker.textContent = 'Tempo mission';
     if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = 'Kathmandu Chaos';
     this.ui.overlay.classList.add('hidden');
@@ -428,10 +434,16 @@ export class KathmanduChaos {
   }
 
   startSelectedRoute() {
-    this.startRoute(this.selectedRoute);
+    this.startRoute(this.selectedRoute, { tutorial: !this.progress.tutorialSeen });
   }
 
-  startRoute(index) {
+  markTutorialSeen() {
+    if (this.progress.tutorialSeen) return;
+    this.progress.tutorialSeen = true;
+    this.saveProgress();
+  }
+
+  startRoute(index, options = {}) {
     this.selectedRoute = clamp(index, 0, this.progress.unlocked);
     this.ensureAudio();
     this.hideGarage();
@@ -441,11 +453,80 @@ export class KathmanduChaos {
     this.pausedByOverlay = false;
     this.paused = false;
     this.running = true;
+    this.startTutorialCoach(Boolean(options.tutorial));
     this.startRouteIntro();
     if (this.audio) this.nextMusicTime = this.audio.ctx.currentTime + 0.1;
     if (this.audio) this.nextAmbientTime = this.audio.ctx.currentTime + 0.25;
     this.playRouteStartSound();
     this.clock.getDelta();
+  }
+
+  startTutorialCoach(active) {
+    this.tutorialCoach = { active, age: 0, stage: 'intro', completeTimer: 0 };
+    if (!active) this.hideTutorialCoach();
+  }
+
+  hideTutorialCoach() {
+    this.ui.tutorialCoach?.classList.add('hidden');
+  }
+
+  setTutorialCoach(step, title, text) {
+    if (!this.ui.tutorialCoach) return;
+    if (this.ui.tutorialCoachStep) this.ui.tutorialCoachStep.textContent = step;
+    if (this.ui.tutorialCoachTitle) this.ui.tutorialCoachTitle.textContent = title;
+    if (this.ui.tutorialCoachText) this.ui.tutorialCoachText.textContent = text;
+    this.ui.tutorialCoach.classList.remove('hidden');
+  }
+
+  updateTutorialCoach(delta) {
+    if (!this.tutorialCoach.active) return;
+    this.tutorialCoach.age += delta;
+
+    if (this.routeIntro.active) {
+      this.setTutorialCoach('First drive', 'Get ready', 'Use W or Go to accelerate when the countdown ends.');
+      return;
+    }
+
+    const nextPickup = this.pickups.find((pickup) => !pickup.collected);
+    const nearPickup = nextPickup
+      && Math.abs(this.player.position.z - nextPickup.mesh.position.z) < 24
+      && Math.abs(this.player.position.x - nextPickup.mesh.position.x) < 4.5;
+    const movingFast = this.state.speed > 16;
+
+    if (this.state.passengers <= 0 && nearPickup) {
+      this.tutorialCoach.stage = 'pickup';
+      this.setTutorialCoach('Pick up', 'Enter the yellow ring', 'Steer through the ring beside the waiting passenger.');
+      return;
+    }
+
+    if (this.state.passengers <= 0) {
+      this.tutorialCoach.stage = 'find';
+      this.setTutorialCoach('Find passenger', 'Follow the arrow', 'The yellow arrow points to the next customer.');
+      return;
+    }
+
+    if (this.state.passengers < this.level.passengerGoal && this.tutorialCoach.age < 13) {
+      this.tutorialCoach.stage = 'traffic';
+      this.setTutorialCoach('Street control', 'Horn and brake help', 'Tap H or Horn near traffic. Use Space or Brake before tight gaps.');
+      return;
+    }
+
+    if (this.state.passengers < this.level.passengerGoal) {
+      this.tutorialCoach.stage = 'more';
+      this.setTutorialCoach('Keep boarding', 'Find more rings', 'Board enough passengers before heading to the finish.');
+      return;
+    }
+
+    if (this.state.passengers >= this.level.passengerGoal) {
+      this.tutorialCoach.stage = 'finish';
+      this.setTutorialCoach('Finish route', 'Follow the gate arrow', movingFast ? 'Nice pace. Reach the finish gate before time runs out.' : 'Accelerate toward the finish gate before time runs out.');
+      this.tutorialCoach.completeTimer += delta;
+      if (this.tutorialCoach.completeTimer > 5) {
+        this.markTutorialSeen();
+        this.tutorialCoach.active = false;
+        this.hideTutorialCoach();
+      }
+    }
   }
 
   startRouteIntro() {
@@ -693,7 +774,7 @@ export class KathmanduChaos {
   confirmResetProgress() {
     const confirmed = window.confirm('Reset unlocked routes, best fares, upgrades, and fare bank?');
     if (!confirmed) return;
-    this.progress = { unlocked: 0, bestScores: {}, routeStars: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume, skins: ['classic'], selectedSkin: 'classic' };
+    this.progress = { unlocked: 0, bestScores: {}, routeStars: {}, wallet: 0, upgrades: { battery: 0, brakes: 0, handling: 0 }, audioMuted: this.audioMuted, audioVolume: this.audioVolume, skins: ['classic'], selectedSkin: 'classic', tutorialSeen: false };
     this.selectedRoute = 0;
     this.saveProgress();
     this.loadLevel(0, { showIntro: false });
@@ -797,6 +878,7 @@ export class KathmanduChaos {
     this.paused = true;
     this.running = false;
     this.pausedByOverlay = true;
+    this.hideTutorialCoach();
     this.ui.pauseMenu?.classList.remove('hidden');
     this.renderAudioButtons();
   }
@@ -1857,6 +1939,7 @@ export class KathmanduChaos {
     if (this.routeIntro.active) {
       this.updateRouteIntro(delta);
       this.updateWeather(delta);
+      this.updateTutorialCoach(delta);
       this.renderHud();
       return;
     }
@@ -1868,6 +1951,7 @@ export class KathmanduChaos {
     this.passengerCalloutTimer = Math.max(0, this.passengerCalloutTimer - delta);
     this.hornPulse = Math.max(0, this.hornPulse - delta);
     this.state.comboTimer = Math.max(0, this.state.comboTimer - delta);
+    this.updateTutorialCoach(delta);
     if (this.state.comboTimer <= 0 && this.state.combo > 1) {
       this.state.combo = 1;
     }
@@ -2529,6 +2613,11 @@ export class KathmanduChaos {
     this.running = false;
     this.pausedByOverlay = true;
     this.paused = false;
+    if (this.tutorialCoach.active) {
+      this.markTutorialSeen();
+      this.tutorialCoach.active = false;
+      this.hideTutorialCoach();
+    }
     this.ui.overlay?.classList.add('hidden');
     this.ui.garage?.classList.add('hidden');
     this.ui.pauseMenu?.classList.add('hidden');
@@ -2709,6 +2798,7 @@ export class KathmanduChaos {
   showOverlay(text, buttonLabel, action, secondary = null) {
     this.running = false;
     this.pausedByOverlay = true;
+    this.hideTutorialCoach();
     this.ui.garage?.classList.add('hidden');
     this.ui.overlay?.classList.remove('loading');
     this.ui.overlayText.textContent = text;

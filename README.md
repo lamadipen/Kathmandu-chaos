@@ -79,6 +79,7 @@ On mobile, use the on-screen controls:
 - Route intro camera labels that spotlight key landmarks before the run starts
 - Optional landmark bonus objectives that award extra fare without blocking route completion
 - Main title/story sequence that frames Maya's permit run before entering the garage
+- In-game first-run coach prompts plus a garage `Practice tips` replay for pickups, horn use, braking, and finish gates
 - Route visual polish with color grading, route-specific lighting, stronger silhouettes, and readable landmark accents
 - Route results screen with fare breakdown, best fare comparison, and 1-3 star rating
 - End-of-route reward badges for new bests, unlocks, clean runs, combo streaks, and fare bank payout
@@ -217,7 +218,6 @@ It covers build verification, desktop and mobile smoke tests, asset/license audi
 ## Suggested Next Work
 
 - Add a third title-screen action so `Start Route 1`, `Enter garage`, and `Credits` are all available without hiding quick start.
-- Add a lightweight first-run tutorial route prompt for pickup rings, horn use, brakes, and finish gates.
 - Add final low-poly Kathmandu character art: passenger families, vendors, students, monks, and traffic police with route-specific outfits.
 - Add a release landing page or itch.io page assets: capsule image, screenshots, short trailer capture list, and controls summary.
 - Add a save reset confirmation dialog so players cannot wipe progress with one accidental click.

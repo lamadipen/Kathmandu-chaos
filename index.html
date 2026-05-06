@@ -59,6 +59,11 @@
         <span>Passenger</span>
         <strong id="passengerBarkText"></strong>
       </div>
+      <div class="tutorial-coach hidden" id="tutorialCoach" aria-live="polite">
+        <span id="tutorialCoachStep">Tip</span>
+        <strong id="tutorialCoachTitle">Follow the arrow</strong>
+        <small id="tutorialCoachText">Drive toward the yellow passenger ring.</small>
+      </div>
       <div class="route-countdown hidden" id="routeCountdown" aria-live="polite">
         <span id="routeCountdownLabel">Route start</span>
         <strong id="routeCountdownValue">3</strong>
@@ -136,6 +141,7 @@
               <p class="garage-hint" id="garageHint">Clear routes to unlock harder Kathmandu runs and future vehicle upgrades.</p>
               <div class="garage-actions">
                 <button class="secondary-action" id="audioToggle" type="button">Audio on</button>
+                <button class="secondary-action" id="tutorialButton" type="button">Practice tips</button>
                 <button class="secondary-action" id="creditsButton" type="button">Credits</button>
                 <button class="secondary-action" id="resetProgress" type="button">Reset progress</button>
               </div>
