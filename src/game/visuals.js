@@ -81,6 +81,16 @@ export function createTempo(routeLabel = 'Ratna Park', skin = {}) {
   plate.position.set(0, -0.07, -2.74);
   group.add(plate);
 
+  const nepaliPlate = textPlane('बा १ ज', 0.92, 0.25, '#ffffff', '#111111');
+  nepaliPlate.position.set(0, -0.07, 1.92);
+  nepaliPlate.rotation.y = Math.PI;
+  group.add(nepaliPlate);
+
+  const localBoard = textPlane('यातायात', 1.48, 0.34, '#159b77', '#f8f1dc');
+  localBoard.position.set(0, 1.12, -2.72);
+  localBoard.rotation.x = -0.08;
+  group.add(localBoard);
+
   for (const x of [-0.55, 0.55]) {
     group.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 16), chromeMat, [x, 0.2, -2.72], [Math.PI / 2, 0, 0]));
   }
@@ -368,6 +378,32 @@ export function createShopSign(label, accent = 0xffcf42) {
   sign.position.set(0, 0, 0.08);
   group.add(sign);
   group.add(mesh(new THREE.BoxGeometry(4.05, 0.9, 0.1), mat(0x202124), [0, 0, 0]));
+  return markShadows(group);
+}
+
+export function createRooftopWaterTank(accent = 0xffcf42) {
+  const group = new THREE.Group();
+  group.name = 'rooftopWaterTank';
+  const black = mat(0x111814, { roughness: 0.42, metalness: 0.08 });
+  const band = mat(accent, { roughness: 0.52 });
+  group.add(mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.92, 22), black, [0, 0.46, 0]));
+  group.add(mesh(new THREE.CylinderGeometry(0.76, 0.76, 0.08, 22), band, [0, 0.9, 0]));
+  group.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.48, 8), mat(0x6b7280, { metalness: 0.22, roughness: 0.35 }), [0.58, 1.16, 0]));
+  group.add(mesh(new THREE.SphereGeometry(0.1, 8, 6), band, [0.58, 1.44, 0]));
+  return markShadows(group);
+}
+
+export function createMarigoldGarland(width = 3.2) {
+  const group = new THREE.Group();
+  group.name = 'marigoldGarland';
+  const stringMat = mat(0x2f251d, { roughness: 0.9 });
+  group.add(mesh(new THREE.BoxGeometry(width, 0.035, 0.035), stringMat, [0, 0, 0]));
+  const colors = [0xff9f1c, 0xffcf42, 0xd94848];
+  for (let i = 0; i < 13; i += 1) {
+    const x = -width / 2 + (i / 12) * width;
+    const drop = Math.sin((i / 12) * Math.PI) * 0.18;
+    group.add(mesh(new THREE.SphereGeometry(0.08, 8, 6), mat(colors[i % colors.length], { roughness: 0.72 }), [x, -0.1 - drop, 0]));
+  }
   return markShadows(group);
 }
 

@@ -3,6 +3,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { LEVELS, LANES } from './levels.js';
 import {
   createLandmark,
+  createMarigoldGarland,
   createObstacle,
   createPassenger as createPassengerMesh,
   createPassengerAccessories,
@@ -10,6 +11,7 @@ import {
   createPrayerFlags,
   createRoadHazard,
   createRouteLandmark,
+  createRooftopWaterTank,
   createShopSign,
   createStreetProp,
   createStreetStall,
@@ -192,6 +194,13 @@ const tempoSkins = [
   { id: 'boudha', name: 'Boudha Blue', cost: 900, body: 0x1971c2, roof: 0xf8f1dc, trim: 0xffcf42, stripe: 0xd94848 },
   { id: 'patan', name: 'Patan Brick', cost: 1200, body: 0x8f3f2d, roof: 0xd6c29b, trim: 0xffcf42, stripe: 0x2f9e44 }
 ];
+const nepaliShopLabels = {
+  market: ['चिया', 'मोमो', 'किराना', 'असन'],
+  stupa: ['बौद्ध', 'थुक्पा', 'थाङ्का', 'चिया'],
+  durbar: ['पाटन', 'हस्तकला', 'जुजु धौ', 'माटो'],
+  monsoon: ['कलंकी', 'टायर', 'बस स्टप', 'चिया'],
+  swayambhu: ['स्वयम्भू', 'ठमेल', 'लस्सी', 'चिया']
+};
 
 export class KathmanduChaos {
   constructor({ canvas, ui }) {
@@ -1415,7 +1424,7 @@ export class KathmanduChaos {
 
   addCityBlocks() {
     const colors = [0xbd6b52, 0xd49a63, 0x7aa0a8, 0x6e8064, 0xd6c29b, 0x8b6d9e];
-    const shopLabels = this.level.signs ?? ['Chiya', 'Momo', 'Yatayat'];
+    const shopLabels = [...(this.level.signs ?? ['Chiya', 'Momo', 'Yatayat']), ...(nepaliShopLabels[this.level.theme] ?? nepaliShopLabels.market)];
     for (let z = -20; z > -this.level.length - 80; z -= 26) {
       for (const side of [-1, 1]) {
         const width = rand(7, 13);
@@ -1436,6 +1445,13 @@ export class KathmanduChaos {
           sign.position.set(building.position.x - side * (width / 2 + 0.08), Math.min(height - 0.45, 2.5), building.position.z);
           sign.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
           this.scene.add(sign);
+
+          if (Math.random() > 0.45) {
+            const garland = createMarigoldGarland(Math.min(3.6, width * 0.62));
+            garland.position.set(sign.position.x - side * 0.08, sign.position.y - 0.5, sign.position.z);
+            garland.rotation.y = sign.rotation.y;
+            this.scene.add(garland);
+          }
         }
 
         if (Math.random() > 0.45) {
@@ -1446,27 +1462,71 @@ export class KathmanduChaos {
           flag.position.set(building.position.x, height + 0.25, building.position.z);
           this.scene.add(flag);
         }
+
+        if (Math.random() > 0.52) {
+          const tank = createRooftopWaterTank(this.level.palette.accent);
+          tank.position.set(building.position.x + rand(-width * 0.28, width * 0.28), height + 0.1, building.position.z + rand(-depth * 0.25, depth * 0.25));
+          tank.scale.setScalar(rand(0.72, 1.08));
+          this.scene.add(tank);
+        }
+
+        if (Math.random() > 0.36) {
+          this.addBuildingWindows(building, { width, height, side });
+        }
+      }
+    }
+  }
+
+  addBuildingWindows(building, { width, height, side }) {
+    const rows = Math.max(1, Math.min(4, Math.floor(height / 3)));
+    const cols = Math.max(2, Math.min(4, Math.floor(width / 3)));
+    const matWindow = new THREE.MeshBasicMaterial({ color: 0xf8f1dc, transparent: true, opacity: 0.42 });
+    const matFrame = new THREE.MeshBasicMaterial({ color: 0x151719, transparent: true, opacity: 0.72 });
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        if (Math.random() < 0.18) continue;
+        const xOffset = (col - (cols - 1) / 2) * Math.min(1.8, width / cols);
+        const y = 2.2 + row * 2.25;
+        if (y > height - 0.75) continue;
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.48, 0.04), matFrame);
+        const glow = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.3, 0.045), matWindow);
+        frame.position.set(building.position.x - side * (width / 2 + 0.055), y, building.position.z + xOffset);
+        glow.position.copy(frame.position);
+        glow.position.x -= side * 0.01;
+        frame.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+        glow.rotation.y = frame.rotation.y;
+        this.scene.add(frame);
+        this.scene.add(glow);
       }
     }
   }
 
   addRouteDressing() {
-    const stallLabels = this.level.signs ?? ['Momo', 'Chiya'];
-    for (let z = -80; z > -this.level.length; z -= 140) {
+    const stallLabels = [...(this.level.signs ?? ['Momo', 'Chiya']), ...(nepaliShopLabels[this.level.theme] ?? nepaliShopLabels.market)];
+    for (let z = -70; z > -this.level.length; z -= 118) {
       const side = Math.random() > 0.5 ? 1 : -1;
       const stall = createStreetStall(choice(stallLabels));
       const stallZ = z + rand(-20, 20);
       stall.position.set(this.getRoadCenter(stallZ) + side * rand(11.5, 14.5), 0, stallZ);
       stall.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       this.scene.add(stall);
+
+      if (Math.random() > 0.35) {
+        const garland = createMarigoldGarland(2.2);
+        garland.position.set(stall.position.x, 1.28, stall.position.z - side * 0.85);
+        garland.rotation.y = stall.rotation.y;
+        this.scene.add(garland);
+      }
     }
 
-    for (let z = -110; z > -this.level.length; z -= 180) {
-      const flags = createPrayerFlags(rand(5, 8));
+    for (let z = -88; z > -this.level.length; z -= 135) {
+      const flags = createPrayerFlags(rand(5.6, 9.2));
       flags.position.set(this.getRoadCenter(z), rand(5.4, 7.2), z);
       flags.rotation.y = rand(-0.25, 0.25);
       this.scene.add(flags);
     }
+
+    this.addRouteIdentityBoards();
 
     this.addGameplayLandmarks();
 
@@ -1481,6 +1541,20 @@ export class KathmanduChaos {
     }
 
     this.addStreetProps();
+  }
+
+  addRouteIdentityBoards() {
+    const routeWords = nepaliShopLabels[this.level.theme] ?? nepaliShopLabels.market;
+    const boardPositions = [0.22, 0.46, 0.7].map((at) => -this.level.length * at);
+    for (const [index, z] of boardPositions.entries()) {
+      const side = index % 2 === 0 ? 1 : -1;
+      const label = `${choice(routeWords)} ${this.level.routeBoard}`;
+      const board = createShopSign(label, this.level.palette.accent);
+      board.position.set(this.getRoadCenter(z) + side * 12.2, 3.35, z);
+      board.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      board.scale.setScalar(0.72);
+      this.scene.add(board);
+    }
   }
 
   addGameplayLandmarks() {
@@ -1552,11 +1626,11 @@ export class KathmanduChaos {
   }
 
   getRoutePropTypes() {
-    const shared = ['busStop', 'shutter', 'bricks', 'barrier'];
-    if (this.level.theme === 'stupa') return ['prayerWheels', 'shrine', 'busStop', 'shutter'];
-    if (this.level.theme === 'durbar') return ['shrine', 'bricks', 'shutter', 'barrier'];
-    if (this.level.theme === 'monsoon') return ['puddle', 'busStop', 'barrier', 'shutter'];
-    if (this.level.theme === 'swayambhu') return ['prayerWheels', 'shrine', 'bricks', 'busStop'];
+    const shared = ['busStop', 'shutter', 'bricks', 'barrier', 'shrine'];
+    if (this.level.theme === 'stupa') return ['prayerWheels', 'shrine', 'busStop', 'shutter', 'prayerWheels'];
+    if (this.level.theme === 'durbar') return ['shrine', 'bricks', 'shutter', 'barrier', 'shutter'];
+    if (this.level.theme === 'monsoon') return ['puddle', 'busStop', 'barrier', 'shutter', 'bricks'];
+    if (this.level.theme === 'swayambhu') return ['prayerWheels', 'shrine', 'bricks', 'busStop', 'prayerWheels'];
     return shared;
   }
 
