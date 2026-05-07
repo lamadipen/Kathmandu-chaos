@@ -1454,9 +1454,24 @@ button:focus-visible {
 
   .target-guide {
     top: calc(158px + env(safe-area-inset-top));
-    min-width: 176px;
-    min-height: 48px;
-    padding: 8px 10px;
+    left: 12px;
+    min-width: 0;
+    width: min(176px, 43vw);
+    min-height: 44px;
+    padding: 7px 9px;
+    gap: 8px;
+    transform: none;
+  }
+
+  .target-guide strong {
+    overflow: hidden;
+    font-size: 0.76rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .target-guide span {
+    font-size: 0.68rem;
   }
 
   .target-arrow {
@@ -1506,20 +1521,44 @@ button:focus-visible {
   }
 
   .feedback {
-    top: calc(212px + env(safe-area-inset-top));
-    max-width: calc(100vw - 24px);
-    font-size: 0.82rem;
+    top: calc(206px + env(safe-area-inset-top));
+    max-width: min(260px, calc(100vw - 24px));
+    padding: 7px 10px;
+    font-size: 0.72rem;
     text-align: center;
   }
 
   .passenger-bark {
-    top: calc(252px + env(safe-area-inset-top));
-    min-height: 52px;
-    padding: 9px 12px 10px;
+    top: calc(158px + env(safe-area-inset-top));
+    right: 12px;
+    left: auto;
+    width: min(224px, 50vw);
+    min-height: 44px;
+    max-height: 74px;
+    padding: 7px 9px 8px;
+    transform: translateY(8px);
+    backdrop-filter: blur(10px);
+  }
+
+  .passenger-bark::after {
+    display: none;
+  }
+
+  .passenger-bark.show {
+    transform: translateY(0);
+  }
+
+  .passenger-bark span {
+    font-size: 0.56rem;
   }
 
   .passenger-bark strong {
-    font-size: 0.88rem;
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.72rem;
+    line-height: 1.18;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .tutorial-coach {
@@ -1548,9 +1587,15 @@ button:focus-visible {
 
   .minimap {
     right: 12px;
-    bottom: calc(100px + env(safe-area-inset-bottom));
+    bottom: calc(88px + env(safe-area-inset-bottom));
     left: 12px;
     grid-template-columns: auto 1fr auto;
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+
+  .minimap span {
+    font-size: 0.62rem;
   }
 
   .touch-controls {
@@ -1559,7 +1604,7 @@ button:focus-visible {
   }
 
   .route-card {
-    bottom: calc(156px + env(safe-area-inset-bottom));
+    bottom: calc(138px + env(safe-area-inset-bottom));
   }
 
   .garage {
@@ -1601,7 +1646,7 @@ button:focus-visible {
   .route-card {
     left: 12px;
     width: calc(100vw - 24px);
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
 
   .route-card p {
@@ -1609,15 +1654,18 @@ button:focus-visible {
   }
 
   .route-title {
-    font-size: 0.94rem;
+    font-size: 0.84rem;
   }
 
   .objective {
-    font-size: 0.7rem;
+    overflow: hidden;
+    font-size: 0.64rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .route-progress {
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
   .panel {
@@ -1636,6 +1684,36 @@ button:focus-visible {
 
   .meters div.combo-meter {
     display: none;
+  }
+
+  .target-guide {
+    top: calc(150px + env(safe-area-inset-top));
+    width: calc(50vw - 16px);
+  }
+
+  .passenger-bark {
+    top: calc(150px + env(safe-area-inset-top));
+    width: calc(50vw - 16px);
+  }
+
+  .feedback {
+    top: calc(198px + env(safe-area-inset-top));
+  }
+
+  .route-card {
+    bottom: calc(126px + env(safe-area-inset-bottom));
+  }
+
+  .route-title {
+    display: none;
+  }
+
+  .route-progress {
+    grid-template-columns: 30px 1fr;
+  }
+
+  .minimap {
+    bottom: calc(80px + env(safe-area-inset-bottom));
   }
 
   .touch-button {
