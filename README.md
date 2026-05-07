@@ -216,11 +216,14 @@ Preview the production build:
 npm run preview
 ```
 
+The Vite production build uses relative asset paths, so the generated `dist/` folder can be uploaded to static hosts such as itch.io, Netlify, or a simple web server.
+
 ## Release Prep
 
 Before publishing or sharing a playable build, use the release checklist:
 
 - [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)
+- [RELEASE_NOTES_v0.1.0.md](./RELEASE_NOTES_v0.1.0.md)
 
 It covers build verification, desktop and mobile smoke tests, asset/license audit, current known limitations, and a short release-notes draft.
 

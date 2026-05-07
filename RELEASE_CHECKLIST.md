@@ -7,6 +7,7 @@ Use this checklist before sharing a playable build.
 - Run `npm install` after fresh checkout or dependency changes.
 - Run `npm run release:check`.
 - Run `npm run preview` and open the local preview URL.
+- Confirm the built `dist/` works from relative asset paths for static hosts such as itch.io or Netlify drag-and-drop.
 - Confirm the title menu, garage, route start, pause menu, route finish, route failure, and credits screen all open without console errors.
 
 ## Desktop Smoke Test
@@ -48,3 +49,5 @@ Use this checklist before sharing a playable build.
 ## Release Notes Draft
 
 Kathmandu Chaos is a Three.js and Rapier arcade driving prototype about Maya, a tempo driver trying to save her family permit by completing chaotic Kathmandu routes. This first playable includes five routes, passenger pickup, traffic hazards, garage upgrades, route mastery, Nepali-themed landmarks, mobile controls, generated audio, and in-game credits for starter CC0 assets.
+
+See `RELEASE_NOTES_v0.1.0.md` for the first-playable notes.
